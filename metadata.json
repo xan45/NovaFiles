@@ -1,0 +1,6 @@
+{
+  "name": "NovaFiles",
+  "description": "Modern Android file manager with dual-pane browsing, storage analyzer, archives, media preview, and duplicate finder.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
