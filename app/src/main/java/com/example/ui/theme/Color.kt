@@ -21,6 +21,28 @@ val Slate50 = Color(0xFFF8FAFC)
 val SurfaceDark = Color(0xFF111827)
 val CardDark = Color(0xFF1F2937)
 
+// Frosted Glass Colors
+val FrostedDarkBackground = Color(0xFF090D16)
+val FrostedDarkSurface = Color(0xD9131C2E)
+val FrostedDarkCard = Color(0xB31E2D4A)
+val FrostedDarkBorder = Color(0x3393C5FD)
+
+val FrostedLightBackground = Color(0xFFEDF2F7)
+val FrostedLightSurface = Color(0xE6FFFFFF)
+val FrostedLightCard = Color(0xCCF8FAFC)
+val FrostedLightBorder = Color(0x66FFFFFF)
+
+// Clear UI Colors
+val ClearDarkBackground = Color(0xFF030712)
+val ClearDarkSurface = Color(0x990B132B)
+val ClearDarkCard = Color(0x801C2541)
+val ClearDarkBorder = Color(0x3338BDF8)
+
+val ClearLightBackground = Color(0xFFF8FAFC)
+val ClearLightSurface = Color(0x99FFFFFF)
+val ClearLightCard = Color(0x80F1F5F9)
+val ClearLightBorder = Color(0x4D0284C7)
+
 // Category Colors for Charts & Badges
 val CategoryImages = Color(0xFF3B82F6) // Blue
 val CategoryVideos = Color(0xFF8B5CF6) // Purple

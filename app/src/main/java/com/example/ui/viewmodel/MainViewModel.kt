@@ -34,6 +34,25 @@ import com.example.data.cloud.CloudStorageManager
 import com.example.data.model.CloudAccount
 import com.example.data.model.CloudFileItem
 import com.example.data.model.CloudProvider
+import com.example.data.preferences.AppThemeMode
+import com.example.data.preferences.DarkModeOption
+import com.example.data.preferences.ThemePreferencesRepository
+import com.example.data.local.ActivityLogEntity
+import com.example.data.local.FileTagEntity
+import com.example.data.local.FolderCustomizationEntity
+import com.example.data.local.SyncTaskEntity
+import com.example.data.model.SmartCollection
+import com.example.data.network.FtpServerConfig
+import com.example.data.network.FtpServerManager
+import com.example.data.network.FtpServerState
+import com.example.data.sync.SyncProgress
+import com.example.data.tools.BatchRenameConfig
+import com.example.data.tools.BatchRenameEngine
+import com.example.data.tools.ChecksumTool
+import com.example.data.tools.FileCompareEngine
+import com.example.data.tools.FileComparisonResult
+import com.example.data.tools.FileShredder
+import com.example.data.tools.RenameItem
 import java.io.File
 import java.util.zip.ZipOutputStream
 
@@ -48,7 +67,14 @@ enum class AppScreen {
     VAULT,
     SETTINGS,
     ONBOARDING,
-    CLOUD_STORAGE
+    CLOUD_STORAGE,
+    NETWORK,
+    TOOLS,
+    BATCH_RENAME,
+    FILE_COMPARE,
+    FOLDER_SYNC,
+    ACTIVITY_LOGS,
+    SMART_COLLECTION
 }
 
 enum class ActivePane { LEFT, RIGHT }
@@ -73,12 +99,35 @@ sealed class DialogType {
     data class DeleteConfirm(val files: List<File>, val permanent: Boolean) : DialogType()
     data class SetPin(val isChange: Boolean = false) : DialogType()
     data object UnlockVault : DialogType()
+    data class TagEditor(val file: File) : DialogType()
+    data class FolderCustomizer(val folder: File) : DialogType()
+    data class ChecksumViewer(val file: File) : DialogType()
+    data class ShredConfirm(val files: List<File>) : DialogType()
 }
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = FileRepository(application)
     private val prefs = application.getSharedPreferences("novafiles_prefs", Context.MODE_PRIVATE)
+    private val themeRepo = ThemePreferencesRepository(application)
+
+    val themeMode: StateFlow<AppThemeMode> = themeRepo.themeModeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppThemeMode.MATERIAL_YOU)
+
+    val darkModeOption: StateFlow<DarkModeOption> = themeRepo.darkModeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DarkModeOption.SYSTEM)
+
+    fun setThemeMode(mode: AppThemeMode) {
+        viewModelScope.launch {
+            themeRepo.setThemeMode(mode)
+        }
+    }
+
+    fun setDarkModeOption(option: DarkModeOption) {
+        viewModelScope.launch {
+            themeRepo.setDarkMode(option)
+        }
+    }
 
     // Current Screen
     private val _currentScreen = MutableStateFlow(AppScreen.HOME)
@@ -321,10 +370,56 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val destDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             val downloaded = cloudManager.downloadCloudFile(item, destDir)
             if (downloaded != null) {
-                showSnackbar("Downloaded ${item.name} to Downloads")
+                showSnackbar("Downloaded ${item.name} (Offline ready)")
                 loadCurrentFiles()
+                loadCloudFiles(item.provider, _cloudFolderId.value)
             } else {
                 showSnackbar("Download failed")
+            }
+        }
+    }
+
+    fun openCloudFile(item: CloudFileItem, context: Context) {
+        if (item.isDirectory) {
+            navigateCloudFolder(item)
+            return
+        }
+        viewModelScope.launch {
+            val localFile = cloudManager.getCachedLocalFile(item)
+            if (localFile != null && localFile.exists()) {
+                val ext = item.name.substringAfterLast(".", "").lowercase()
+                if (ext in listOf("txt", "csv", "json", "xml", "md", "html", "js", "kt")) {
+                    val (content, _) = repository.readTextPreview(localFile)
+                    _previewDoc.value = Pair(localFile, content)
+                } else if (ext in listOf("jpg", "jpeg", "png", "webp", "gif")) {
+                    _previewImage.value = localFile
+                } else {
+                    // Open with FileProvider intent
+                    try {
+                        val uri = repository.getUriForFile(localFile)
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(uri, repository.getMimeType(localFile))
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        showSnackbar("File cached offline: ${localFile.name}")
+                    }
+                }
+                loadCloudFiles(item.provider, _cloudFolderId.value)
+            } else {
+                showSnackbar("Unable to cache file for offline viewing")
+            }
+        }
+    }
+
+    fun clearCloudCache() {
+        viewModelScope.launch {
+            val freed = cloudManager.clearCache()
+            showSnackbar("Cleared ${FileInfo.formatFileSize(freed)} of cloud cache")
+            _selectedCloudProvider.value?.let { prov ->
+                loadCloudFiles(prov, _cloudFolderId.value)
             }
         }
     }
@@ -968,6 +1063,234 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 loadVaultFiles()
                 loadCurrentFiles()
             }
+        }
+    }
+
+    // ==========================================
+    // Networking & FTP Server
+    // ==========================================
+    private val ftpServerManager = FtpServerManager(getApplication())
+    val ftpServerState: StateFlow<FtpServerState> = ftpServerManager.serverState
+
+    private val _ftpConfig = MutableStateFlow(FtpServerConfig())
+    val ftpConfig: StateFlow<FtpServerConfig> = _ftpConfig.asStateFlow()
+
+    fun updateFtpConfig(config: FtpServerConfig) {
+        _ftpConfig.value = config
+    }
+
+    fun toggleFtpServer() {
+        if (ftpServerState.value.isRunning) {
+            ftpServerManager.stopServer()
+            showSnackbar("FTP Server stopped")
+        } else {
+            ftpServerManager.startServer(_ftpConfig.value, viewModelScope)
+            showSnackbar("FTP Server running on port ${_ftpConfig.value.port}")
+        }
+    }
+
+    // ==========================================
+    // Smart Collections
+    // ==========================================
+    private val _selectedCollection = MutableStateFlow<SmartCollection?>(null)
+    val selectedCollection: StateFlow<SmartCollection?> = _selectedCollection.asStateFlow()
+
+    private val _collectionFiles = MutableStateFlow<List<FileInfo>>(emptyList())
+    val collectionFiles: StateFlow<List<FileInfo>> = _collectionFiles.asStateFlow()
+
+    fun openSmartCollection(collection: SmartCollection) {
+        _selectedCollection.value = collection
+        navigateTo(AppScreen.SMART_COLLECTION)
+        viewModelScope.launch {
+            _collectionFiles.value = repository.getFilesForCollection(collection)
+        }
+    }
+
+    // ==========================================
+    // Tags & Folder Customizations
+    // ==========================================
+    val allTags: StateFlow<List<FileTagEntity>> = repository.fileTagDao.getAllTagsFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allCustomizations: StateFlow<List<FolderCustomizationEntity>> = repository.folderCustomizationDao.getAllCustomizationsFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun addTagToFile(path: String, tag: String, colorHex: String = "#3B82F6") {
+        viewModelScope.launch {
+            repository.addTagToFile(path, tag, colorHex)
+            showSnackbar("Tag '$tag' added")
+            loadCurrentFiles()
+        }
+    }
+
+    fun removeTagFromFile(path: String, tag: String) {
+        viewModelScope.launch {
+            repository.removeTagFromFile(path, tag)
+            showSnackbar("Tag removed")
+            loadCurrentFiles()
+        }
+    }
+
+    fun setFolderCustomization(path: String, colorHex: String?, iconName: String?, note: String?, coverImagePath: String?) {
+        viewModelScope.launch {
+            repository.setFolderCustomization(path, colorHex, iconName, note, coverImagePath)
+            showSnackbar("Folder customized successfully")
+            loadCurrentFiles()
+        }
+    }
+
+    // ==========================================
+    // Folder Sync
+    // ==========================================
+    val syncTasks: StateFlow<List<SyncTaskEntity>> = repository.syncTaskDao.getAllSyncTasksFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val syncProgress: StateFlow<SyncProgress> = repository.syncEngine.progress
+
+    fun addSyncTask(name: String, src: String, dst: String, type: String) {
+        viewModelScope.launch {
+            repository.syncTaskDao.insertTask(
+                SyncTaskEntity(name = name, sourcePath = src, destPath = dst, syncType = type)
+            )
+            showSnackbar("Sync task created: $name")
+        }
+    }
+
+    fun runSyncTask(task: SyncTaskEntity) {
+        viewModelScope.launch {
+            val res = repository.syncEngine.runSync(task)
+            showSnackbar(res.message)
+        }
+    }
+
+    fun deleteSyncTask(id: Long) {
+        viewModelScope.launch {
+            repository.syncTaskDao.deleteTask(id)
+            showSnackbar("Sync task removed")
+        }
+    }
+
+    // ==========================================
+    // Batch Rename
+    // ==========================================
+    private val _batchRenameConfig = MutableStateFlow(BatchRenameConfig())
+    val batchRenameConfig: StateFlow<BatchRenameConfig> = _batchRenameConfig.asStateFlow()
+
+    private val _batchRenameItems = MutableStateFlow<List<RenameItem>>(emptyList())
+    val batchRenameItems: StateFlow<List<RenameItem>> = _batchRenameItems.asStateFlow()
+
+    private val _filesForBatchRename = MutableStateFlow<List<File>>(emptyList())
+    val filesForBatchRename: StateFlow<List<File>> = _filesForBatchRename.asStateFlow()
+
+    fun startBatchRename(files: List<File>) {
+        _filesForBatchRename.value = files
+        _batchRenameItems.value = BatchRenameEngine.computePreview(files, _batchRenameConfig.value)
+        navigateTo(AppScreen.BATCH_RENAME)
+    }
+
+    fun updateBatchRenameConfig(config: BatchRenameConfig) {
+        _batchRenameConfig.value = config
+        _batchRenameItems.value = BatchRenameEngine.computePreview(_filesForBatchRename.value, config)
+    }
+
+    fun executeBatchRename() {
+        viewModelScope.launch {
+            val (success, failed) = BatchRenameEngine.applyBatchRename(_batchRenameItems.value, repository.activityLogDao)
+            showSnackbar("Renamed $success files" + if (failed > 0) ", $failed failed" else "")
+            clearSelection()
+            loadCurrentFiles()
+            navigateTo(AppScreen.BROWSER)
+        }
+    }
+
+    // ==========================================
+    // File Comparison
+    // ==========================================
+    private val _compareFileA = MutableStateFlow<File?>(null)
+    val compareFileA: StateFlow<File?> = _compareFileA.asStateFlow()
+
+    private val _compareFileB = MutableStateFlow<File?>(null)
+    val compareFileB: StateFlow<File?> = _compareFileB.asStateFlow()
+
+    private val _comparisonResult = MutableStateFlow<FileComparisonResult?>(null)
+    val comparisonResult: StateFlow<FileComparisonResult?> = _comparisonResult.asStateFlow()
+
+    fun startComparison(fileA: File? = null, fileB: File? = null) {
+        _compareFileA.value = fileA
+        _compareFileB.value = fileB
+        _comparisonResult.value = null
+        navigateTo(AppScreen.FILE_COMPARE)
+        if (fileA != null && fileB != null) {
+            viewModelScope.launch {
+                _comparisonResult.value = FileCompareEngine.compareFiles(fileA, fileB)
+            }
+        }
+    }
+
+    fun setCompareFiles(fileA: File?, fileB: File?) {
+        _compareFileA.value = fileA
+        _compareFileB.value = fileB
+        if (fileA != null && fileB != null) {
+            viewModelScope.launch {
+                _comparisonResult.value = FileCompareEngine.compareFiles(fileA, fileB)
+            }
+        }
+    }
+
+    // ==========================================
+    // Checksum & Hashes
+    // ==========================================
+    private val _inspectChecksumFile = MutableStateFlow<File?>(null)
+    val inspectChecksumFile: StateFlow<File?> = _inspectChecksumFile.asStateFlow()
+
+    private val _sha256Hash = MutableStateFlow("")
+    val sha256Hash: StateFlow<String> = _sha256Hash.asStateFlow()
+
+    private val _sha1Hash = MutableStateFlow("")
+    val sha1Hash: StateFlow<String> = _sha1Hash.asStateFlow()
+
+    private val _md5Hash = MutableStateFlow("")
+    val md5Hash: StateFlow<String> = _md5Hash.asStateFlow()
+
+    fun inspectChecksum(file: File) {
+        _inspectChecksumFile.value = file
+        _sha256Hash.value = "Calculating..."
+        _sha1Hash.value = "Calculating..."
+        _md5Hash.value = "Calculating..."
+        showDialog(DialogType.ChecksumViewer(file))
+        viewModelScope.launch(Dispatchers.IO) {
+            _sha256Hash.value = ChecksumTool.calculateHash(file, "SHA-256")
+            _sha1Hash.value = ChecksumTool.calculateHash(file, "SHA-1")
+            _md5Hash.value = ChecksumTool.calculateHash(file, "MD5")
+        }
+    }
+
+    // ==========================================
+    // Secure File Shredder
+    // ==========================================
+    fun shredFiles(files: List<File>, passes: Int = 3) {
+        viewModelScope.launch {
+            var shredded = 0
+            for (f in files) {
+                if (FileShredder.shredFile(f, passes, repository.activityLogDao)) {
+                    shredded++
+                }
+            }
+            showSnackbar("Permanently shredded $shredded files")
+            clearSelection()
+            loadCurrentFiles()
+        }
+    }
+
+    // ==========================================
+    // Activity Logs
+    // ==========================================
+    val activityLogs: StateFlow<List<ActivityLogEntity>> = repository.activityLogDao.getActivityLogsFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun clearActivityLogs() {
+        viewModelScope.launch {
+            repository.activityLogDao.clearAllLogs()
+            showSnackbar("Activity history cleared")
         }
     }
 

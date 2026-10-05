@@ -16,7 +16,13 @@ data class FileInfo(
     val isDirectory: Boolean = file.isDirectory,
     val isHidden: Boolean = file.isHidden || file.name.startsWith("."),
     val itemCount: Int = if (file.isDirectory) (file.listFiles()?.size ?: 0) else 0,
-    val uri: Uri? = null
+    val uri: Uri? = null,
+    val tags: List<String> = emptyList(),
+    val tagColors: List<String> = emptyList(),
+    val folderColorHex: String? = null,
+    val folderIconName: String? = null,
+    val folderNote: String? = null,
+    val folderCoverImage: String? = null
 ) {
     val formattedSize: String
         get() = formatFileSize(size, isDirectory, itemCount)
@@ -63,8 +69,17 @@ enum class FileCategory(val label: String) {
     ARCHIVES("Archives"),
     APKS("APKs"),
     DOWNLOADS("Downloads"),
-    LARGE_FILES("Large Files"),
-    DUPLICATES("Duplicates")
+    TRASH("Recycle Bin")
+}
+
+enum class SmartCollection(val title: String, val description: String) {
+    RECENT_DOWNLOADS("Recent Downloads", "Files saved in the last 7 days"),
+    LARGE_FILES("Large Files", "Files consuming over 100 MB"),
+    APK_BACKUPS("APK Backups", "Extracted and standalone application packages"),
+    SCREENSHOTS("Screenshots", "Captured device screens & snapshots"),
+    VIDEOS("Videos", "All video recordings and media"),
+    DOCUMENTS("Documents", "PDFs, spreadsheets, text and notes"),
+    FAVORITES("Favorites", "Starred and pinned folders & files")
 }
 
 enum class FileSortOption(val displayName: String) {
@@ -74,7 +89,7 @@ enum class FileSortOption(val displayName: String) {
     DATE_ASC("Date (Oldest first)"),
     SIZE_DESC("Size (Largest first)"),
     SIZE_ASC("Size (Smallest first)"),
-    TYPE_ASC("Type (Extension)")
+    TYPE("File Type")
 }
 
 enum class FileViewMode {
@@ -87,74 +102,60 @@ data class StorageVolumeInfo(
     val path: String,
     val totalBytes: Long,
     val freeBytes: Long,
-    val usedBytes: Long = (totalBytes - freeBytes).coerceAtLeast(0L),
     val isRemovable: Boolean = false
 ) {
-    val usedPercent: Float
-        get() = if (totalBytes > 0) (usedBytes.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f) else 0f
-
-    val formattedTotal: String
-        get() = FileInfo.formatFileSize(totalBytes)
-
-    val formattedUsed: String
-        get() = FileInfo.formatFileSize(usedBytes)
-
-    val formattedFree: String
-        get() = FileInfo.formatFileSize(freeBytes)
+    val usedBytes: Long get() = totalBytes - freeBytes
+    val usedPercentage: Float get() = if (totalBytes > 0) (usedBytes.toFloat() / totalBytes.toFloat()) else 0f
+    val formattedTotal: String get() = FileInfo.formatFileSize(totalBytes)
+    val formattedUsed: String get() = FileInfo.formatFileSize(usedBytes)
+    val formattedFree: String get() = FileInfo.formatFileSize(freeBytes)
 }
+
+data class StorageAnalysisResult(
+    val totalBytes: Long,
+    val usedBytes: Long,
+    val freeBytes: Long,
+    val imagesBytes: Long,
+    val videosBytes: Long,
+    val audioBytes: Long,
+    val documentsBytes: Long,
+    val archivesBytes: Long,
+    val apksBytes: Long,
+    val othersBytes: Long,
+    val duplicateGroups: List<DuplicateGroup>,
+    val largestFiles: List<FileInfo>,
+    val emptyFolders: List<FileInfo>,
+    val junkFiles: List<FileInfo>,
+    val junkTotalBytes: Long,
+    val duplicateTotalBytes: Long,
+    val insights: List<String>
+)
 
 data class DuplicateGroup(
     val checksum: String,
-    val size: Long,
     val files: List<FileInfo>
 ) {
-    val totalWastedBytes: Long
-        get() = if (files.size > 1) size * (files.size - 1) else 0L
+    val singleFileSize: Long get() = files.firstOrNull()?.size ?: 0L
+    val totalWastedBytes: Long get() = if (files.size > 1) singleFileSize * (files.size - 1) else 0L
+    val formattedWasted: String get() = FileInfo.formatFileSize(totalWastedBytes)
+}
 
-    val formattedWasted: String
-        get() = FileInfo.formatFileSize(totalWastedBytes)
+data class InstalledAppInfo(
+    val packageName: String,
+    val appName: String,
+    val versionName: String,
+    val versionCode: Long,
+    val apkSize: Long,
+    val isSystemApp: Boolean,
+    val apkPath: String
+) {
+    val formattedSize: String get() = FileInfo.formatFileSize(apkSize)
 }
 
 data class ArchiveEntryInfo(
     val name: String,
-    val size: Long,
-    val compressedSize: Long,
     val isDirectory: Boolean,
-    val crc: Long
-) {
-    val formattedSize: String
-        get() = FileInfo.formatFileSize(size)
-}
-
-data class StorageAnalysisResult(
-    val totalBytes: Long = 0L,
-    val usedBytes: Long = 0L,
-    val freeBytes: Long = 0L,
-    val imagesBytes: Long = 0L,
-    val videosBytes: Long = 0L,
-    val audioBytes: Long = 0L,
-    val documentsBytes: Long = 0L,
-    val archivesBytes: Long = 0L,
-    val apksBytes: Long = 0L,
-    val othersBytes: Long = 0L,
-    val duplicateGroups: List<DuplicateGroup> = emptyList(),
-    val largestFiles: List<FileInfo> = emptyList(),
-    val emptyFolders: List<FileInfo> = emptyList(),
-    val junkFiles: List<FileInfo> = emptyList(),
-    val junkTotalBytes: Long = 0L,
-    val duplicateTotalBytes: Long = 0L,
-    val insights: List<String> = emptyList()
+    val compressedSize: Long,
+    val uncompressedSize: Long,
+    val lastModified: Long
 )
-
-data class InstalledAppInfo(
-    val appName: String,
-    val packageName: String,
-    val versionName: String,
-    val apkPath: String,
-    val apkSize: Long,
-    val isSystemApp: Boolean,
-    val permissions: List<String> = emptyList()
-) {
-    val formattedSize: String
-        get() = FileInfo.formatFileSize(apkSize)
-}

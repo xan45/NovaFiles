@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,25 +16,30 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudQueue
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LinkOff
+import androidx.compose.material.icons.filled.OfflinePin
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -74,9 +80,13 @@ fun CloudStorageScreen(
     onNavigateCloudFolder: (CloudFileItem) -> Unit,
     onNavigateCloudUp: () -> Unit,
     onDownloadCloudFile: (CloudFileItem) -> Unit,
+    onOpenFile: (CloudFileItem) -> Unit,
     onUploadFile: () -> Unit,
+    onClearCache: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showOnlyOffline by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -86,16 +96,17 @@ fun CloudStorageScreen(
         // If viewing inside a provider's file browser
         if (selectedProvider != null) {
             val account = accounts.find { it.provider == selectedProvider }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onNavigateCloudUp) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(4.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = selectedProvider.displayName,
@@ -103,9 +114,17 @@ fun CloudStorageScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = account?.accountEmail ?: "Connected",
+                        text = account?.accountEmail ?: "Connected (Room Cache Active)",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                IconButton(onClick = onClearCache) {
+                    Icon(
+                        imageVector = Icons.Default.DeleteSweep,
+                        contentDescription = "Clear Cache",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -114,17 +133,62 @@ fun CloudStorageScreen(
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Upload")
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Upload", style = MaterialTheme.typography.labelSmall)
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            // Offline Cache Filter Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FilterChip(
+                    selected = !showOnlyOffline,
+                    onClick = { showOnlyOffline = false },
+                    label = { Text("All Cloud Files") }
+                )
+                FilterChip(
+                    selected = showOnlyOffline,
+                    onClick = { showOnlyOffline = true },
+                    label = { Text("Available Offline") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.OfflinePin,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = if (showOnlyOffline) MaterialTheme.colorScheme.primary else Color.Gray
+                        )
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            val displayedFiles = if (showOnlyOffline) {
+                cloudFiles.filter { it.isDirectory || it.isCachedLocally }
+            } else cloudFiles
 
             // Cloud files list
-            if (cloudFiles.isEmpty()) {
+            if (displayedFiles.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("This cloud folder is empty.")
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = if (showOnlyOffline) Icons.Default.CloudQueue else Icons.Default.Folder,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            modifier = Modifier.size(56.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = if (showOnlyOffline) "No cached offline files in this folder." else "This cloud folder is empty.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             } else {
                 LazyColumn(
@@ -132,7 +196,7 @@ fun CloudStorageScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
-                    items(cloudFiles, key = { it.id }) { item ->
+                    items(displayedFiles, key = { it.id }) { item ->
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -141,7 +205,7 @@ fun CloudStorageScreen(
                                     if (item.isDirectory) {
                                         onNavigateCloudFolder(item)
                                     } else {
-                                        onDownloadCloudFile(item)
+                                        onOpenFile(item)
                                     }
                                 },
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
@@ -171,21 +235,49 @@ fun CloudStorageScreen(
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
-                                    if (!item.isDirectory) {
-                                        Text(
-                                            text = item.formattedSize,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        if (!item.isDirectory) {
+                                            Text(
+                                                text = item.formattedSize,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        if (item.isCachedLocally) {
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = SecondaryTeal.copy(alpha = 0.15f)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Check,
+                                                        contentDescription = null,
+                                                        tint = SecondaryTeal,
+                                                        modifier = Modifier.size(10.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(2.dp))
+                                                    Text(
+                                                        text = "Offline Cached",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = SecondaryTeal,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
                                 }
 
                                 if (!item.isDirectory) {
                                     IconButton(onClick = { onDownloadCloudFile(item) }) {
                                         Icon(
-                                            imageVector = Icons.Default.CloudDownload,
+                                            imageVector = if (item.isCachedLocally) Icons.Default.CloudDone else Icons.Default.CloudDownload,
                                             contentDescription = "Download to Device",
-                                            tint = MaterialTheme.colorScheme.primary
+                                            tint = if (item.isCachedLocally) SecondaryTeal else MaterialTheme.colorScheme.primary
                                         )
                                     }
                                 }
@@ -196,16 +288,32 @@ fun CloudStorageScreen(
             }
         } else {
             // Main Cloud Accounts Dashboard
-            Text(
-                text = "Cloud Storage Services",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Connect and manage files on Google Drive, Dropbox, and OneDrive",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Cloud Storage Services",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Multi-cloud sync & offline cache",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                IconButton(onClick = onClearCache) {
+                    Icon(
+                        imageVector = Icons.Default.DeleteSweep,
+                        contentDescription = "Clear Cache",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 

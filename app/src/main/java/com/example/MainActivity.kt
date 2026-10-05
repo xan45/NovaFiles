@@ -72,6 +72,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.model.FileInfo
+import com.example.data.preferences.AppThemeMode
+import com.example.data.preferences.DarkModeOption
 import com.example.ui.components.ArchiveViewerModal
 import com.example.ui.components.AudioPlayerModal
 import com.example.ui.components.CreateFileDialog
@@ -80,6 +82,7 @@ import com.example.ui.components.CreateZipDialog
 import com.example.ui.components.DeleteConfirmDialog
 import com.example.ui.components.DocumentViewerModal
 import com.example.ui.components.FileDetailsDialog
+import com.example.ui.components.FloatingNavigationBar
 import com.example.ui.components.ImageViewerModal
 import com.example.ui.components.PinDialog
 import com.example.ui.components.RenameDialog
@@ -108,9 +111,19 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            NovaFilesTheme {
-                val viewModel: MainViewModel = viewModel()
-                MainAppScreen(viewModel = viewModel)
+            val viewModel: MainViewModel = viewModel()
+            val currentThemeMode by viewModel.themeMode.collectAsState()
+            val currentDarkMode by viewModel.darkModeOption.collectAsState()
+
+            NovaFilesTheme(
+                themeMode = currentThemeMode,
+                darkModeOption = currentDarkMode
+            ) {
+                MainAppScreen(
+                    viewModel = viewModel,
+                    currentThemeMode = currentThemeMode,
+                    currentDarkMode = currentDarkMode
+                )
             }
         }
     }
@@ -118,7 +131,11 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainAppScreen(viewModel: MainViewModel) {
+fun MainAppScreen(
+    viewModel: MainViewModel,
+    currentThemeMode: AppThemeMode,
+    currentDarkMode: DarkModeOption
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -290,40 +307,10 @@ fun MainAppScreen(viewModel: MainViewModel) {
             }
         },
         bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface
-            ) {
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.HOME,
-                    onClick = { viewModel.navigateTo(AppScreen.HOME) },
-                    icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
-                    label = { Text("Home") }
-                )
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.BROWSER,
-                    onClick = { viewModel.navigateTo(AppScreen.BROWSER) },
-                    icon = { Icon(Icons.Default.Folder, contentDescription = "Files") },
-                    label = { Text("Files") }
-                )
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.DUAL_PANE,
-                    onClick = { viewModel.navigateTo(AppScreen.DUAL_PANE) },
-                    icon = { Icon(Icons.Default.CompareArrows, contentDescription = "Dual Pane") },
-                    label = { Text("Dual") }
-                )
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.STORAGE_ANALYZER,
-                    onClick = { viewModel.navigateTo(AppScreen.STORAGE_ANALYZER) },
-                    icon = { Icon(Icons.Default.PieChart, contentDescription = "Analyzer") },
-                    label = { Text("Analyzer") }
-                )
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.SETTINGS,
-                    onClick = { viewModel.navigateTo(AppScreen.SETTINGS) },
-                    icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                    label = { Text("Settings") }
-                )
-            }
+            FloatingNavigationBar(
+                currentScreen = currentScreen,
+                onNavigate = { viewModel.navigateTo(it) }
+            )
         }
     ) { innerPadding ->
         Box(
@@ -507,10 +494,16 @@ fun MainAppScreen(viewModel: MainViewModel) {
                             onNavigateCloudFolder = { viewModel.navigateCloudFolder(it) },
                             onNavigateCloudUp = { viewModel.navigateCloudUp() },
                             onDownloadCloudFile = { viewModel.downloadCloudFile(it) },
-                            onUploadFile = { viewModel.showSnackbar("Select local file to upload") }
+                            onOpenFile = { item -> viewModel.openCloudFile(item, context) },
+                            onUploadFile = { viewModel.showSnackbar("Select local file to upload") },
+                            onClearCache = { viewModel.clearCloudCache() }
                         )
 
                         AppScreen.SETTINGS -> SettingsScreen(
+                            currentThemeMode = currentThemeMode,
+                            onThemeModeChange = { viewModel.setThemeMode(it) },
+                            currentDarkMode = currentDarkMode,
+                            onDarkModeChange = { viewModel.setDarkModeOption(it) },
                             showHidden = showHidden,
                             onToggleShowHidden = { viewModel.toggleShowHidden() },
                             onChangePin = { viewModel.showDialog(DialogType.SetPin(isChange = true)) },

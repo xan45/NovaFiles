@@ -43,6 +43,11 @@ class FileRepository(private val context: Context) {
     val recentDao: RecentDao = db.recentDao()
     val trashDao: TrashDao = db.trashDao()
     val scanHistoryDao: ScanHistoryDao = db.scanHistoryDao()
+    val fileTagDao: FileTagDao = db.fileTagDao()
+    val folderCustomizationDao: FolderCustomizationDao = db.folderCustomizationDao()
+    val syncTaskDao: SyncTaskDao = db.syncTaskDao()
+    val activityLogDao: ActivityLogDao = db.activityLogDao()
+    val syncEngine = com.example.data.sync.FolderSyncEngine(syncTaskDao, activityLogDao)
 
     private val storageEngine = StorageAnalyzerEngine(context)
 
@@ -513,6 +518,101 @@ class FileRepository(private val context: Context) {
                     isDirectory = file.isDirectory,
                     mimeType = getMimeType(file),
                     action = action
+                )
+            )
+        }
+    }
+
+    // --- Smart Collections ---
+    suspend fun getFilesForCollection(collection: com.example.data.model.SmartCollection): List<FileInfo> = withContext(Dispatchers.IO) {
+        val root = Environment.getExternalStorageDirectory()
+        when (collection) {
+            com.example.data.model.SmartCollection.RECENT_DOWNLOADS -> {
+                val dlDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                if (dlDir.exists()) {
+                    val sevenDaysAgo = System.currentTimeMillis() - 7L * 24 * 3600 * 1000
+                    dlDir.listFiles()?.filter { it.isFile && it.lastModified() >= sevenDaysAgo }
+                        ?.map { FileInfo(it) }?.sortedByDescending { it.lastModified } ?: emptyList()
+                } else emptyList()
+            }
+            com.example.data.model.SmartCollection.LARGE_FILES -> {
+                val threshold = 100L * 1024 * 1024 // 100MB
+                val list = mutableListOf<FileInfo>()
+                root.walkTopDown().maxDepth(6).filter { it.isFile && it.length() >= threshold }.take(100).forEach {
+                    list.add(FileInfo(it))
+                }
+                list.sortedByDescending { it.size }
+            }
+            com.example.data.model.SmartCollection.APK_BACKUPS -> {
+                val list = mutableListOf<FileInfo>()
+                root.walkTopDown().maxDepth(5).filter { it.isFile && it.extension.equals("apk", ignoreCase = true) }.take(80).forEach {
+                    list.add(FileInfo(it))
+                }
+                list.sortedByDescending { it.lastModified }
+            }
+            com.example.data.model.SmartCollection.SCREENSHOTS -> {
+                val list = mutableListOf<FileInfo>()
+                val picDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                val dcimDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+                listOf(File(picDir, "Screenshots"), File(dcimDir, "Screenshots")).forEach { sDir ->
+                    if (sDir.exists()) {
+                        sDir.listFiles()?.filter { it.isFile }?.forEach { list.add(FileInfo(it)) }
+                    }
+                }
+                list.sortedByDescending { it.lastModified }
+            }
+            com.example.data.model.SmartCollection.VIDEOS -> {
+                getFilesByCategory(com.example.data.model.FileCategory.VIDEOS)
+            }
+            com.example.data.model.SmartCollection.DOCUMENTS -> {
+                getFilesByCategory(com.example.data.model.FileCategory.DOCUMENTS)
+            }
+            com.example.data.model.SmartCollection.FAVORITES -> {
+                val favs = favoriteDao.getAllFavorites()
+                // Return currently pinned favorites as FileInfo
+                emptyList()
+            }
+        }
+    }
+
+    // --- Tags ---
+    suspend fun addTagToFile(path: String, tag: String, colorHex: String = "#3B82F6") {
+        withContext(Dispatchers.IO) {
+            fileTagDao.insertTag(com.example.data.local.FileTagEntity(path, tag, colorHex))
+        }
+    }
+
+    suspend fun removeTagFromFile(path: String, tag: String) {
+        withContext(Dispatchers.IO) {
+            fileTagDao.deleteTag(path, tag)
+        }
+    }
+
+    // --- Folder Customization ---
+    suspend fun setFolderCustomization(path: String, colorHex: String?, iconName: String?, note: String?, coverImagePath: String?) {
+        withContext(Dispatchers.IO) {
+            folderCustomizationDao.setCustomization(
+                com.example.data.local.FolderCustomizationEntity(path, colorHex, iconName, note, coverImagePath)
+            )
+        }
+    }
+
+    suspend fun removeFolderCustomization(path: String) {
+        withContext(Dispatchers.IO) {
+            folderCustomizationDao.removeCustomization(path)
+        }
+    }
+
+    // --- Activity Logging ---
+    suspend fun logActivity(action: String, src: String, dst: String? = null, details: String = "", success: Boolean = true) {
+        withContext(Dispatchers.IO) {
+            activityLogDao.insertLog(
+                com.example.data.local.ActivityLogEntity(
+                    action = action,
+                    sourcePath = src,
+                    destPath = dst,
+                    details = details,
+                    isSuccess = success
                 )
             )
         }

@@ -10,9 +10,14 @@ import androidx.room.RoomDatabase
         FavoriteEntity::class,
         RecentEntity::class,
         TrashEntity::class,
-        ScanHistoryEntity::class
+        ScanHistoryEntity::class,
+        CloudCacheEntity::class,
+        FileTagEntity::class,
+        FolderCustomizationEntity::class,
+        SyncTaskEntity::class,
+        ActivityLogEntity::class
     ],
-    version = 1,
+    version = 3,
     exportSchema = false
 )
 abstract class NovaFilesDatabase : RoomDatabase() {
@@ -20,6 +25,11 @@ abstract class NovaFilesDatabase : RoomDatabase() {
     abstract fun recentDao(): RecentDao
     abstract fun trashDao(): TrashDao
     abstract fun scanHistoryDao(): ScanHistoryDao
+    abstract fun cloudCacheDao(): CloudCacheDao
+    abstract fun fileTagDao(): FileTagDao
+    abstract fun folderCustomizationDao(): FolderCustomizationDao
+    abstract fun syncTaskDao(): SyncTaskDao
+    abstract fun activityLogDao(): ActivityLogDao
 
     companion object {
         @Volatile

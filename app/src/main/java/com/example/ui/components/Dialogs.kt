@@ -33,6 +33,23 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.ColorLens
+import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Label
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import com.example.ui.theme.LocalAppThemeMode
+import com.example.ui.theme.glassBorder
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -425,6 +442,282 @@ fun PinDialog(
                 }
             ) {
                 Text(buttonText)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun TagEditorDialog(
+    file: File,
+    onDismiss: () -> Unit,
+    onAddTag: (tag: String, colorHex: String) -> Unit
+) {
+    var tagText by remember { mutableStateOf("") }
+    val colorOptions = listOf("#3B82F6", "#10B981", "#EF4444", "#F59E0B", "#8B5CF6", "#EC4899", "#06B6D4")
+    var selectedColor by remember { mutableStateOf(colorOptions[0]) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.Label, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        title = { Text("Add Tag to ${file.name}") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = tagText,
+                    onValueChange = { tagText = it },
+                    label = { Text("Tag Name (e.g. Work, Invoice, Personal)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Text("Tag Color:", style = MaterialTheme.typography.labelMedium)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    colorOptions.forEach { hex ->
+                        val color = Color(android.graphics.Color.parseColor(hex))
+                        val isSelected = selectedColor == hex
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(color)
+                                .clickable { selectedColor = hex }
+                                .then(
+                                    if (isSelected) Modifier.border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                    else Modifier
+                                )
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { if (tagText.isNotBlank()) onAddTag(tagText.trim(), selectedColor) },
+                enabled = tagText.isNotBlank()
+            ) {
+                Text("Add Tag")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun FolderCustomizerDialog(
+    folder: File,
+    onDismiss: () -> Unit,
+    onSave: (colorHex: String?, iconName: String?, note: String?) -> Unit
+) {
+    val colorOptions = listOf("#3B82F6", "#10B981", "#EF4444", "#F59E0B", "#8B5CF6", "#EC4899", "#14B8A6")
+    var selectedColor by remember { mutableStateOf<String?>(colorOptions[0]) }
+    val iconNames = listOf("Folder", "Work", "Camera", "Music", "Video", "Code", "Archive", "Star")
+    var selectedIcon by remember { mutableStateOf("Folder") }
+    var noteText by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        title = { Text("Customize Folder") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(text = folder.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
+                Text("Folder Color:", style = MaterialTheme.typography.labelSmall)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    colorOptions.forEach { hex ->
+                        val color = Color(android.graphics.Color.parseColor(hex))
+                        val isSelected = selectedColor == hex
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(color)
+                                .clickable { selectedColor = hex }
+                                .then(
+                                    if (isSelected) Modifier.border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                    else Modifier
+                                )
+                        )
+                    }
+                }
+
+                Text("Icon Type:", style = MaterialTheme.typography.labelSmall)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(iconNames) { iconName ->
+                        FilterChip(
+                            selected = selectedIcon == iconName,
+                            onClick = { selectedIcon = iconName },
+                            label = { Text(iconName) }
+                        )
+                    }
+                }
+
+                OutlinedTextField(
+                    value = noteText,
+                    onValueChange = { noteText = it },
+                    label = { Text("Folder Description / Notes") },
+                    maxLines = 3,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSave(selectedColor, selectedIcon, noteText.ifBlank { null }) }
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun ChecksumViewerDialog(
+    file: File,
+    sha256: String,
+    sha1: String,
+    md5: String,
+    onDismiss: () -> Unit
+) {
+    var targetHash by remember { mutableStateOf("") }
+    val isMatch = targetHash.isNotBlank() && (
+        targetHash.trim().equals(sha256, ignoreCase = true) ||
+        targetHash.trim().equals(sha1, ignoreCase = true) ||
+        targetHash.trim().equals(md5, ignoreCase = true)
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.Calculate, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        title = { Text("Checksum & Hashes") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = file.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+
+                HashField(label = "SHA-256", hash = sha256)
+                HashField(label = "SHA-1", hash = sha1)
+                HashField(label = "MD5", hash = md5)
+
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Verify Checksum:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                OutlinedTextField(
+                    value = targetHash,
+                    onValueChange = { targetHash = it },
+                    placeholder = { Text("Paste expected hash to verify...") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (targetHash.isNotBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isMatch) Color(0xFF10B981).copy(alpha = 0.2f) else MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = if (isMatch) "✓ CHECKSUM MATCHED! File integrity verified." else "✗ CHECKSUM MISMATCH! Expected hash does not match.",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isMatch) Color(0xFF10B981) else MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
+}
+
+@Composable
+private fun HashField(label: String, hash: String) {
+    Column {
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+        Surface(
+            shape = RoundedCornerShape(6.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = hash,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(6.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun ShredConfirmDialog(
+    files: List<File>,
+    onDismiss: () -> Unit,
+    onConfirm: (passes: Int) -> Unit
+) {
+    var passes by remember { mutableIntStateOf(3) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+        title = { Text("Permanently Shred Files?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "Shredding overwrites file data multiple times with zero, one, and random byte passes before deletion. Shredded files CANNOT be recovered.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+
+                Text(text = "Target: ${files.size} items", fontWeight = FontWeight.Bold)
+
+                Text("Overwriting Passes:", style = MaterialTheme.typography.labelSmall)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(1, 3, 7).forEach { p ->
+                        FilterChip(
+                            selected = passes == p,
+                            onClick = { passes = p },
+                            label = { Text("$p Passes" + if (p == 3) " (DoD)" else "") },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(passes) },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Shred Permanently")
             }
         },
         dismissButton = {

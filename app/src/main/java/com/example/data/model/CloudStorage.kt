@@ -29,7 +29,9 @@ data class CloudFileItem(
     val parentId: String? = null,
     val lastModified: Long = System.currentTimeMillis(),
     val provider: CloudProvider,
-    val downloadUrl: String? = null
+    val downloadUrl: String? = null,
+    val isCachedLocally: Boolean = false,
+    val localCachedPath: String? = null
 ) {
     val formattedSize: String
         get() = FileInfo.formatFileSize(size, isDirectory)
