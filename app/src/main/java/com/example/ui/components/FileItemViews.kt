@@ -87,23 +87,27 @@ fun getFileIconAndColor(fileInfo: FileInfo): Pair<ImageVector, Color> {
 @Composable
 fun FileListItem(
     fileInfo: FileInfo,
-    isSelected: Boolean,
-    isSelectionMode: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    onSelectToggle: () -> Unit,
-    onOpen: () -> Unit,
-    onRename: () -> Unit,
-    onDelete: () -> Unit,
-    onCopy: () -> Unit,
-    onMove: () -> Unit,
-    onDuplicate: () -> Unit,
-    onShare: () -> Unit,
-    onToggleFavorite: () -> Unit,
-    onCompress: () -> Unit,
-    onDetails: () -> Unit,
+    isSelected: Boolean = false,
+    isSelectionMode: Boolean = false,
+    onClick: () -> Unit = {},
+    onLongClick: () -> Unit = {},
+    onSelectToggle: () -> Unit = {},
+    onOpen: () -> Unit = onClick,
+    onRename: () -> Unit = {},
+    onDelete: () -> Unit = {},
+    onCopy: () -> Unit = {},
+    onMove: () -> Unit = {},
+    onDuplicate: () -> Unit = {},
+    onShare: () -> Unit = {},
+    onToggleFavorite: () -> Unit = {},
+    onCompress: () -> Unit = {},
+    onDetails: () -> Unit = {},
+    onItemClick: (() -> Unit)? = null,
+    onItemLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val effectiveClick = onItemClick ?: onClick
+    val effectiveLongClick = onItemLongClick ?: onLongClick
     var showMenu by remember { mutableStateOf(false) }
     val (icon, tint) = getFileIconAndColor(fileInfo)
 
@@ -113,13 +117,13 @@ fun FileListItem(
             .clip(RoundedCornerShape(12.dp))
             .combinedClickable(
                 onClick = {
-                    if (isSelectionMode) onSelectToggle() else onClick()
+                    if (isSelectionMode) onSelectToggle() else effectiveClick()
                 },
-                onLongClick = onLongClick
+                onLongClick = {
+                    effectiveLongClick()
+                }
             ),
-        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-        else Color.Transparent,
-        shape = RoundedCornerShape(12.dp)
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent
     ) {
         Row(
             modifier = Modifier

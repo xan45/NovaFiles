@@ -17,7 +17,7 @@ android {
     minSdk = 24
     targetSdk = 36
     versionCode = 1
-    versionName = "1.0"
+    versionName = "1.0.0-beta1"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -59,6 +59,14 @@ android {
   dependenciesInfo {
     includeInApk = false
     includeInBundle = true
+  }
+  packaging {
+    resources {
+      excludes += "/META-INF/{AL2.0,LGPL2.1}"
+      excludes += "/META-INF/DEPENDENCIES"
+      excludes += "/META-INF/LICENSE*"
+      excludes += "/META-INF/NOTICE*"
+    }
   }
 }
 
@@ -118,6 +126,14 @@ dependencies {
   implementation(libs.okhttp)
   // implementation(libs.play.services.location)
   implementation(libs.retrofit)
+  // Advanced Archive Support (7-Zip, RAR, Tar, Gzip)
+  implementation("org.apache.commons:commons-compress:1.26.1")
+  implementation("com.github.junrar:junrar:7.5.5")
+  // SMBv2 / SMBv3 Windows Share Client
+  implementation("com.hierynomus:smbj:0.13.0")
+  // Shizuku API
+  implementation("dev.rikka.shizuku:api:13.1.5")
+  implementation("dev.rikka.shizuku:provider:13.1.5")
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)

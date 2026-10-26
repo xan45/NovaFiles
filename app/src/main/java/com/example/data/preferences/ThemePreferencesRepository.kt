@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.map
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "theme_preferences")
 
 enum class AppThemeMode(val displayName: String, val description: String) {
+    SAMSUNG_ONE_UI("Samsung One UI", "Ergonomic viewing area, 26dp squircles and warm radiant accents"),
     MATERIAL_YOU("Material You", "Dynamic colors adapting to your device wallpaper"),
     FROSTED_GLASS("Frosted Glass UI", "Glassmorphic blurred translucent cards with glowing borders"),
     CLEAR_TRANSPARENT("Clear UI", "Minimalist sleek ultra-clean transparent floating containers")

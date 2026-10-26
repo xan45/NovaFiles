@@ -115,7 +115,7 @@ fun NetworkScreen(
                     containerColor = when (themeMode) {
                         AppThemeMode.FROSTED_GLASS -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
                         AppThemeMode.CLEAR_TRANSPARENT -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
-                        AppThemeMode.MATERIAL_YOU -> MaterialTheme.colorScheme.surfaceVariant
+                        AppThemeMode.SAMSUNG_ONE_UI, AppThemeMode.MATERIAL_YOU -> MaterialTheme.colorScheme.surfaceVariant
                     }
                 )
             ) {

@@ -243,8 +243,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _vaultFiles = MutableStateFlow<List<FileInfo>>(emptyList())
     val vaultFiles: StateFlow<List<FileInfo>> = _vaultFiles.asStateFlow()
 
-    val hasVaultPin: Boolean
-        get() = prefs.getString("vault_pin", null) != null
 
     // Previews & Players
     private val _previewImage = MutableStateFlow<File?>(null)
@@ -582,10 +580,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
             FileCategory.ARCHIVES -> {
-                if (fileInfo.extension == "zip") {
+                if (fileInfo.extension.lowercase() in listOf("zip", "7z", "rar", "tar", "tgz")) {
                     _previewArchive.value = file
                     viewModelScope.launch {
-                        _archiveEntries.value = ArchiveManager.listZipEntries(file)
+                        _archiveEntries.value = ArchiveManager.listEntries(file)
                     }
                 } else {
                     launchExternalIntent(file, context)
@@ -914,7 +912,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun extractArchive(zipFile: File, targetDir: File = zipFile.parentFile ?: _currentDirectory.value) {
         viewModelScope.launch {
             showSnackbar("Extracting archive...")
-            if (ArchiveManager.extractZip(zipFile, targetDir)) {
+            if (ArchiveManager.extractArchive(zipFile, targetDir)) {
                 showSnackbar("Extracted archive to ${targetDir.name}")
                 loadCurrentFiles()
             } else {
@@ -1005,17 +1003,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         stopAudioPlayback()
     }
 
-    // Vault
+    // Vault with SHA-256 Hashing & AES Encryption
+    private fun hashPin(pin: String): String {
+        val md = java.security.MessageDigest.getInstance("SHA-256")
+        return md.digest("NovaFiles_Vault_2026_$pin".toByteArray()).joinToString("") { "%02x".format(it) }
+    }
+
+    val hasVaultPin: Boolean
+        get() = prefs.getString("vault_pin_hash", null) != null || prefs.getString("vault_pin", null) != null
+
     fun setVaultPin(pin: String) {
-        prefs.edit().putString("vault_pin", pin).apply()
+        prefs.edit().putString("vault_pin_hash", hashPin(pin)).remove("vault_pin").apply()
         _isVaultUnlocked.value = true
-        showSnackbar("Vault PIN set successfully")
+        showSnackbar("Vault PIN secured and set")
         loadVaultFiles()
     }
 
     fun unlockVault(pin: String): Boolean {
-        val saved = prefs.getString("vault_pin", null)
-        return if (saved == pin) {
+        val savedHash = prefs.getString("vault_pin_hash", null)
+        val legacyPin = prefs.getString("vault_pin", null)
+        val isValid = if (savedHash != null) {
+            savedHash == hashPin(pin)
+        } else if (legacyPin != null) {
+            legacyPin == pin
+        } else false
+
+        return if (isValid) {
+            if (legacyPin != null) {
+                prefs.edit().putString("vault_pin_hash", hashPin(pin)).remove("vault_pin").apply()
+            }
             _isVaultUnlocked.value = true
             loadVaultFiles()
             true
@@ -1042,26 +1058,89 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun getVaultCipher(mode: Int, iv: ByteArray?): javax.crypto.Cipher {
+        val keyBytes = java.security.MessageDigest.getInstance("SHA-256")
+            .digest("NovaFiles_AES_Encrypted_Vault_Secret_Key".toByteArray())
+        val keySpec = javax.crypto.spec.SecretKeySpec(keyBytes, "AES")
+        val cipher = javax.crypto.Cipher.getInstance("AES/CBC/PKCS5Padding")
+        if (mode == javax.crypto.Cipher.ENCRYPT_MODE) {
+            val generatedIv = ByteArray(16)
+            java.security.SecureRandom().nextBytes(generatedIv)
+            cipher.init(mode, keySpec, javax.crypto.spec.IvParameterSpec(generatedIv))
+        } else {
+            cipher.init(mode, keySpec, javax.crypto.spec.IvParameterSpec(iv ?: ByteArray(16)))
+        }
+        return cipher
+    }
+
     fun moveToVault(file: File) {
-        viewModelScope.launch {
-            val dest = File(vaultDir, file.name)
-            if (file.renameTo(dest)) {
-                showSnackbar("Moved ${file.name} to Secure Vault")
-                loadCurrentFiles()
-                loadVaultFiles()
-            } else {
-                showSnackbar("Failed to move file to Vault")
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val dest = File(vaultDir, file.name)
+                val cipher = getVaultCipher(javax.crypto.Cipher.ENCRYPT_MODE, null)
+                val iv = cipher.iv
+                java.io.FileOutputStream(dest).use { fos ->
+                    fos.write(iv)
+                    javax.crypto.CipherOutputStream(fos, cipher).use { cos ->
+                        file.inputStream().use { fis ->
+                            fis.copyTo(cos)
+                        }
+                    }
+                }
+                if (dest.exists() && dest.length() > 0) {
+                    file.delete()
+                    withContext(Dispatchers.Main) {
+                        showSnackbar("Encrypted and moved ${file.name} to Secure Vault")
+                        loadCurrentFiles()
+                        loadVaultFiles()
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        showSnackbar("Failed to encrypt file into Vault")
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    showSnackbar("Vault encryption error: ${e.message}")
+                }
             }
         }
     }
 
     fun restoreFromVault(file: File, targetDir: File = Environment.getExternalStorageDirectory()) {
-        viewModelScope.launch {
-            val dest = File(targetDir, file.name)
-            if (file.renameTo(dest)) {
-                showSnackbar("Restored ${file.name} from Vault")
-                loadVaultFiles()
-                loadCurrentFiles()
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val dest = File(targetDir, file.name)
+                java.io.FileInputStream(file).use { fis ->
+                    val iv = ByteArray(16)
+                    val read = fis.read(iv)
+                    if (read == 16) {
+                        val cipher = getVaultCipher(javax.crypto.Cipher.DECRYPT_MODE, iv)
+                        javax.crypto.CipherInputStream(fis, cipher).use { cis ->
+                            java.io.FileOutputStream(dest).use { fos ->
+                                cis.copyTo(fos)
+                            }
+                        }
+                    } else {
+                        java.io.FileOutputStream(dest).use { fos ->
+                            fis.copyTo(fos)
+                        }
+                    }
+                }
+                if (dest.exists() && dest.length() > 0) {
+                    file.delete()
+                    withContext(Dispatchers.Main) {
+                        showSnackbar("Decrypted and restored ${file.name}")
+                        loadVaultFiles()
+                        loadCurrentFiles()
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    showSnackbar("Vault decryption error: ${e.message}")
+                }
             }
         }
     }

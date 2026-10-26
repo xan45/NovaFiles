@@ -1,8 +1,71 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:width="66dp"
-        android:height="66dp"
-        android:drawable="@drawable/ic_app_icon_art"
-        android:gravity="center" />
-</layer-list>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Soft Drop Shadow beneath Folder -->
+    <path
+        android:fillColor="#33000000"
+        android:pathData="M26,74 L82,74 C84.5,74 86.5,76 86.5,78.5 C86.5,81 84.5,83 82,83 L26,83 C23.5,83 21.5,81 21.5,78.5 C21.5,76 23.5,74 26,74 Z" />
+
+    <!-- Folder Back and Curved Tab (Samsung One UI squircle silhouette) -->
+    <path
+        android:fillColor="#FFF8E1"
+        android:pathData="M27,33 C25,33 23.5,34.5 23.5,36.5 L23.5,72 C23.5,74.8 25.7,77 28.5,77 L79.5,77 C82.3,77 84.5,74.8 84.5,72 L84.5,44 C84.5,41.8 82.7,40 80.5,40 L54,40 C52.2,40 50.5,38.8 49.5,37.2 L47.5,34.2 C46.5,32.8 45,32 43.2,32 L27,32 Z" />
+
+    <!-- Peeking Document 1 (Back sheet, subtle translucency) -->
+    <path
+        android:fillAlpha="0.65"
+        android:fillColor="#FFFFFF"
+        android:pathData="M35,25 C35,23.5 36.2,22.2 37.7,22.2 L61.3,22.2 C62.8,22.2 64,23.5 64,25 L64,43 L35,43 Z" />
+
+    <!-- Peeking Document 2 (Front sheet, crisp white with rounded corners) -->
+    <path
+        android:fillAlpha="0.95"
+        android:fillColor="#FFFFFF"
+        android:pathData="M41,20 C41,18.5 42.2,17.2 43.7,17.2 L69.3,17.2 C70.8,17.2 72,18.5 72,20 L72,44 L41,44 Z" />
+
+    <!-- Document Content Lines -->
+    <path
+        android:pathData="M47,24 L66,24"
+        android:strokeWidth="1.8"
+        android:strokeColor="#CBD5E1"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M47,29 L59,29"
+        android:strokeWidth="1.8"
+        android:strokeColor="#CBD5E1"
+        android:strokeLineCap="round" />
+
+    <!-- Inner ambient shadow behind Front Flap -->
+    <path
+        android:fillColor="#1A000000"
+        android:pathData="M23.5,44 L84.5,44 L84.5,50 L23.5,50 Z" />
+
+    <!-- Front Folder Flap (Smooth Squircle Curves) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M23.5,43 C23.5,41.2 25,39.8 26.8,39.8 L81.2,39.8 C83,39.8 84.5,41.2 84.5,43 L84.5,70 C84.5,74.2 81.2,77.5 77,77.5 L31,77.5 C26.8,77.5 23.5,74.2 23.5,70 Z" />
+
+    <!-- Glossy Top Edge Highlight on Front Flap -->
+    <path
+        android:pathData="M27,40.5 L81,40.5"
+        android:strokeWidth="1.2"
+        android:strokeColor="#FFFFFF"
+        android:strokeAlpha="0.8"
+        android:strokeLineCap="round" />
+
+    <!-- Nova Star Emblem (Signature 4-point radiant star in Samsung Amber/Gold) -->
+    <path
+        android:fillColor="#FB8C00"
+        android:pathData="M54,50 C54,55 56.8,57.8 61.8,58.5 C56.8,59.2 54,62 54,67 C54,62 51.2,59.2 46.2,58.5 C51.2,57.8 54,55 54,50 Z" />
+
+    <!-- Mini Star Sparkle Accent -->
+    <path
+        android:fillAlpha="0.85"
+        android:fillColor="#FFA726"
+        android:pathData="M66,48 C66,50 67.2,51 69,51.5 C67.2,52 66,53 66,55 C66,53 64.8,52 63,51.5 C64.8,51 66,50 66,48 Z" />
+
+</vector>

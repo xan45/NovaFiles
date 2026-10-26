@@ -10,15 +10,7 @@ import android.os.Build
 import android.os.Environment
 import androidx.core.content.FileProvider
 import com.example.data.archive.ArchiveManager
-import com.example.data.local.FavoriteDao
-import com.example.data.local.FavoriteEntity
-import com.example.data.local.NovaFilesDatabase
-import com.example.data.local.RecentDao
-import com.example.data.local.RecentEntity
-import com.example.data.local.ScanHistoryDao
-import com.example.data.local.ScanHistoryEntity
-import com.example.data.local.TrashDao
-import com.example.data.local.TrashEntity
+import com.example.data.local.*
 import com.example.data.model.FileCategory
 import com.example.data.model.FileInfo
 import com.example.data.model.FileSortOption
@@ -172,7 +164,7 @@ class FileRepository(private val context: Context) {
             FileSortOption.DATE_ASC -> compareBy { it.lastModified }
             FileSortOption.SIZE_DESC -> compareByDescending { it.size }
             FileSortOption.SIZE_ASC -> compareBy { it.size }
-            FileSortOption.TYPE_ASC -> compareBy({ it.extension }, { it.name.lowercase(Locale.ROOT) })
+            FileSortOption.TYPE -> compareBy({ it.extension }, { it.name.lowercase(Locale.ROOT) })
         }
 
         return dirs.sortedWith(comparator) + nonDirs.sortedWith(comparator)
@@ -448,15 +440,21 @@ class FileRepository(private val context: Context) {
                 val apkFile = File(sourceDir)
                 val appName = pm.getApplicationLabel(appInfo).toString()
 
+                val vCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    pkg.longVersionCode
+                } else {
+                    @Suppress("DEPRECATION")
+                    pkg.versionCode.toLong()
+                }
                 apps.add(
                     InstalledAppInfo(
                         appName = appName,
                         packageName = pkg.packageName,
                         versionName = pkg.versionName ?: "1.0",
+                        versionCode = vCode,
                         apkPath = sourceDir,
                         apkSize = if (apkFile.exists()) apkFile.length() else 0L,
-                        isSystemApp = isSystem,
-                        permissions = pkg.requestedPermissions?.toList() ?: emptyList()
+                        isSystemApp = isSystem
                     )
                 )
             }

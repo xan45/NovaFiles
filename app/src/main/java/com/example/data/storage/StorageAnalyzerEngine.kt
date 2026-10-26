@@ -185,7 +185,6 @@ class StorageAnalyzerEngine(private val context: Context) {
                 if (filesWithHash.size > 1) {
                     val group = DuplicateGroup(
                         checksum = hash,
-                        size = filesWithHash.first().size,
                         files = filesWithHash
                     )
                     duplicateGroups.add(group)
@@ -207,33 +206,33 @@ class StorageAnalyzerEngine(private val context: Context) {
 
         val videoPct = (videosBytes * 100 / totalCategorized).toInt()
         if (videoPct > 30) {
-            insights.add("🎬 Videos consume $videoPct% of your file storage (${FileInfo.formatFileSize(videosBytes)}). Consider backing up or compressing large video files.")
+            insights.add("ðŸŽ¬ Videos consume $videoPct% of your file storage (${FileInfo.formatFileSize(videosBytes)}). Consider backing up or compressing large video files.")
         }
 
         val imgPct = (imagesBytes * 100 / totalCategorized).toInt()
         if (imgPct > 25) {
-            insights.add("📸 Photos and images take up ${FileInfo.formatFileSize(imagesBytes)}. Check for duplicate shots or bursts.")
+            insights.add("ðŸ“¸ Photos and images take up ${FileInfo.formatFileSize(imagesBytes)}. Check for duplicate shots or bursts.")
         }
 
         if (duplicateTotalBytes > 10 * 1024 * 1024) {
-            insights.add("✨ You have ${FileInfo.formatFileSize(duplicateTotalBytes)} of identical duplicate files. Deleting redundant copies will free up immediate space.")
+            insights.add("âœ¨ You have ${FileInfo.formatFileSize(duplicateTotalBytes)} of identical duplicate files. Deleting redundant copies will free up immediate space.")
         }
 
         if (junkBytes > 5 * 1024 * 1024) {
-            insights.add("🧹 Detected ${FileInfo.formatFileSize(junkBytes)} in temporary, log, and cache files that are safe to clean.")
+            insights.add("ðŸ§¹ Detected ${FileInfo.formatFileSize(junkBytes)} in temporary, log, and cache files that are safe to clean.")
         }
 
         if (emptyFolders.isNotEmpty()) {
-            insights.add("📁 Found ${emptyFolders.size} empty folders cluttering your file system hierarchy.")
+            insights.add("ðŸ“ Found ${emptyFolders.size} empty folders cluttering your file system hierarchy.")
         }
 
         val largeCount = largestFiles.count { it.size > 100 * 1024 * 1024 }
         if (largeCount > 0) {
-            insights.add("📦 You have $largeCount files larger than 100 MB. Review the Large Files tab to reclaim bulk storage.")
+            insights.add("ðŸ“¦ You have $largeCount files larger than 100 MB. Review the Large Files tab to reclaim bulk storage.")
         }
 
         if (insights.isEmpty()) {
-            insights.add("🎉 Your storage is in great shape! No major bottlenecks or bloat detected.")
+            insights.add("ðŸŽ‰ Your storage is in great shape! No major bottlenecks or bloat detected.")
         }
 
         StorageAnalysisResult(
@@ -259,15 +258,34 @@ class StorageAnalyzerEngine(private val context: Context) {
 
     private fun computeFastHash(file: File): String {
         return try {
-            val md = MessageDigest.getInstance("MD5")
-            val buffer = ByteArray(8192)
-            FileInputStream(file).use { fis ->
-                var read: Int
-                var totalRead = 0
-                // Read up to first 256KB and last 64KB for speed on large files
-                while (fis.read(buffer).also { read = it } != -1 && totalRead < 256 * 1024) {
-                    md.update(buffer, 0, read)
-                    totalRead += read
+            val md = MessageDigest.getInstance("SHA-256")
+            val len = file.length()
+            if (len <= 128 * 1024) {
+                FileInputStream(file).use { fis ->
+                    val buffer = ByteArray(8192)
+                    var read: Int
+                    while (fis.read(buffer).also { read = it } != -1) {
+                        md.update(buffer, 0, read)
+                    }
+                }
+            } else {
+                java.io.RandomAccessFile(file, "r").use { raf ->
+                    val buffer = ByteArray(64 * 1024)
+                    raf.seek(0)
+                    val readHead = raf.read(buffer)
+                    if (readHead > 0) md.update(buffer, 0, readHead)
+                    val midPos = (len / 2) - (32 * 1024)
+                    if (midPos > 64 * 1024) {
+                        raf.seek(midPos)
+                        val readMid = raf.read(buffer)
+                        if (readMid > 0) md.update(buffer, 0, readMid)
+                    }
+                    val tailPos = len - (64 * 1024)
+                    if (tailPos > 0) {
+                        raf.seek(tailPos)
+                        val readTail = raf.read(buffer)
+                        if (readTail > 0) md.update(buffer, 0, readTail)
+                    }
                 }
             }
             md.digest().joinToString("") { "%02x".format(it) }

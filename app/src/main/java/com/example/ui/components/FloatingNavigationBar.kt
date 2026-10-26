@@ -84,7 +84,7 @@ fun FloatingNavigationBar(
             color = when (themeMode) {
                 AppThemeMode.FROSTED_GLASS -> MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
                 AppThemeMode.CLEAR_TRANSPARENT -> MaterialTheme.colorScheme.surface.copy(alpha = 0.70f)
-                AppThemeMode.MATERIAL_YOU -> MaterialTheme.colorScheme.surface
+                AppThemeMode.SAMSUNG_ONE_UI, AppThemeMode.MATERIAL_YOU -> MaterialTheme.colorScheme.surface
             },
             tonalElevation = 6.dp
         ) {

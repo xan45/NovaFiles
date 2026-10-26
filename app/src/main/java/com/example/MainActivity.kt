@@ -74,30 +74,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.model.FileInfo
 import com.example.data.preferences.AppThemeMode
 import com.example.data.preferences.DarkModeOption
-import com.example.ui.components.ArchiveViewerModal
-import com.example.ui.components.AudioPlayerModal
-import com.example.ui.components.CreateFileDialog
-import com.example.ui.components.CreateFolderDialog
-import com.example.ui.components.CreateZipDialog
-import com.example.ui.components.DeleteConfirmDialog
-import com.example.ui.components.DocumentViewerModal
-import com.example.ui.components.FileDetailsDialog
-import com.example.ui.components.FloatingNavigationBar
-import com.example.ui.components.ImageViewerModal
-import com.example.ui.components.PinDialog
-import com.example.ui.components.RenameDialog
-import com.example.ui.components.VideoPlayerModal
-import com.example.ui.screens.ApkManagerScreen
-import com.example.ui.screens.BrowserScreen
-import com.example.ui.screens.CloudStorageScreen
-import com.example.ui.screens.DualPaneScreen
-import com.example.ui.screens.FavoritesScreen
-import com.example.ui.screens.HomeScreen
-import com.example.ui.screens.OnboardingScreen
-import com.example.ui.screens.RecycleBinScreen
-import com.example.ui.screens.SettingsScreen
-import com.example.ui.screens.StorageAnalyzerScreen
-import com.example.ui.screens.VaultScreen
+import com.example.ui.components.*
+import com.example.ui.screens.*
 import com.example.ui.theme.NovaFilesTheme
 import com.example.ui.viewmodel.AppScreen
 import com.example.ui.viewmodel.DialogType
@@ -193,6 +171,22 @@ fun MainAppScreen(
     val archiveEntries by viewModel.archiveEntries.collectAsState()
     val activeDialog by viewModel.activeDialog.collectAsState()
     val snackbarMsg by viewModel.snackbarMessage.collectAsState()
+    val ftpState by viewModel.ftpServerState.collectAsState()
+    val ftpConfig by viewModel.ftpConfig.collectAsState()
+    val batchRenameConfig by viewModel.batchRenameConfig.collectAsState()
+    val batchRenameItems by viewModel.batchRenameItems.collectAsState()
+    val compareFileA by viewModel.compareFileA.collectAsState()
+    val compareFileB by viewModel.compareFileB.collectAsState()
+    val comparisonResult by viewModel.comparisonResult.collectAsState()
+    val syncTasks by viewModel.syncTasks.collectAsState()
+    val syncProgress by viewModel.syncProgress.collectAsState()
+    val activityLogs by viewModel.activityLogs.collectAsState()
+    val selectedCollection by viewModel.selectedCollection.collectAsState()
+    val collectionFiles by viewModel.collectionFiles.collectAsState()
+    val allTags by viewModel.allTags.collectAsState()
+    val sha256Hash by viewModel.sha256Hash.collectAsState()
+    val sha1Hash by viewModel.sha1Hash.collectAsState()
+    val md5Hash by viewModel.md5Hash.collectAsState()
 
     // Storage Permission handling
     var hasStoragePermission by remember {
@@ -513,7 +507,45 @@ fun MainAppScreen(
                             onRevisitOnboarding = { viewModel.navigateTo(AppScreen.ONBOARDING) },
                             onOpenCloudStorage = { viewModel.navigateTo(AppScreen.CLOUD_STORAGE) }
                         )
-                        AppScreen.ONBOARDING -> {}
+                        AppScreen.ONBOARDING -> OnboardingScreen(
+                            onFinish = { viewModel.completeOnboarding() }
+                        )
+                        AppScreen.NETWORK -> NetworkScreen(
+                            ftpState = ftpState,
+                            ftpConfig = ftpConfig,
+                            onToggleFtpServer = { viewModel.toggleFtpServer() },
+                            onUpdateFtpConfig = { viewModel.updateFtpConfig(it) }
+                        )
+                        AppScreen.TOOLS -> ToolsScreen(
+                            onNavigateToScreen = { viewModel.navigateTo(it) }
+                        )
+                        AppScreen.BATCH_RENAME -> BatchRenameScreen(
+                            items = batchRenameItems,
+                            config = batchRenameConfig,
+                            onUpdateConfig = { viewModel.updateBatchRenameConfig(it) },
+                            onExecuteRename = { viewModel.executeBatchRename() }
+                        )
+                        AppScreen.FILE_COMPARE -> FileCompareScreen(
+                            fileA = compareFileA,
+                            fileB = compareFileB,
+                            comparisonResult = comparisonResult
+                        )
+                        AppScreen.FOLDER_SYNC -> FolderSyncScreen(
+                            tasks = syncTasks,
+                            syncProgress = syncProgress,
+                            onAddSyncTask = { name, src, dst, type -> viewModel.addSyncTask(name, src, dst, type) },
+                            onRunSync = { viewModel.runSyncTask(it) },
+                            onDeleteTask = { viewModel.deleteSyncTask(it) }
+                        )
+                        AppScreen.ACTIVITY_LOGS -> ActivityLogsScreen(
+                            logs = activityLogs,
+                            onClearLogs = { viewModel.clearActivityLogs() }
+                        )
+                        AppScreen.SMART_COLLECTION -> SmartCollectionsScreen(
+                            collection = selectedCollection,
+                            files = collectionFiles,
+                            onOpenFile = { viewModel.openFile(it, context) }
+                        )
                     }
                 }
             }
@@ -650,6 +682,45 @@ fun MainAppScreen(
                         viewModel.dismissDialog()
                     }
                     success
+                }
+            )
+        }
+        is DialogType.ChecksumViewer -> {
+            ChecksumViewerDialog(
+                file = dialog.file,
+                sha256 = sha256Hash,
+                sha1 = sha1Hash,
+                md5 = md5Hash,
+                onDismiss = { viewModel.dismissDialog() }
+            )
+        }
+        is DialogType.FolderCustomizer -> {
+            FolderCustomizerDialog(
+                folder = dialog.folder,
+                onDismiss = { viewModel.dismissDialog() },
+                onSave = { color, icon, note ->
+                    viewModel.setFolderCustomization(dialog.folder.absolutePath, color, icon, note, null)
+                    viewModel.dismissDialog()
+                }
+            )
+        }
+        is DialogType.TagEditor -> {
+            TagEditorDialog(
+                file = dialog.file,
+                onDismiss = { viewModel.dismissDialog() },
+                onAddTag = { tag, color ->
+                    viewModel.addTagToFile(dialog.file.absolutePath, tag, color)
+                    viewModel.dismissDialog()
+                }
+            )
+        }
+        is DialogType.ShredConfirm -> {
+            ShredConfirmDialog(
+                files = dialog.files,
+                onDismiss = { viewModel.dismissDialog() },
+                onConfirm = { passes ->
+                    viewModel.shredFiles(dialog.files, passes)
+                    viewModel.dismissDialog()
                 }
             )
         }

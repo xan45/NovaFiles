@@ -145,6 +145,46 @@ private val ClearLightScheme = lightColorScheme(
     outline = ClearLightBorder
 )
 
+// Samsung One UI Palettes
+private val SamsungOneUIDarkScheme = darkColorScheme(
+    primary = Color(0xFFFFA000),
+    onPrimary = Color(0xFF3E2723),
+    primaryContainer = Color(0xFF5D4037),
+    onPrimaryContainer = Color(0xFFFFECB3),
+    secondary = Color(0xFF2563EB),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFF1E3A8A),
+    onSecondaryContainer = Color(0xFFDBEAFE),
+    tertiary = Color(0xFF10B981),
+    onTertiary = Color.White,
+    background = Color(0xFF121212),
+    onBackground = Color(0xFFF5F5F5),
+    surface = Color(0xFF1E1E1E),
+    onSurface = Color(0xFFF5F5F5),
+    surfaceVariant = Color(0xFF2C2C2C),
+    onSurfaceVariant = Color(0xFFB0B0B0),
+    outline = Color(0xFF3D3D3D)
+)
+
+private val SamsungOneUILightScheme = lightColorScheme(
+    primary = Color(0xFFE65100),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFFFECB3),
+    onPrimaryContainer = Color(0xFF4E342E),
+    secondary = Color(0xFF1D4ED8),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFDBEAFE),
+    onSecondaryContainer = Color(0xFF1E3A8A),
+    tertiary = Color(0xFF059669),
+    onTertiary = Color.White,
+    background = Color(0xFFF7F9FC),
+    onBackground = Color(0xFF1A1C1E),
+    surface = Color.White,
+    onSurface = Color(0xFF1A1C1E),
+    surfaceVariant = Color(0xFFEEF2F6),
+    onSurfaceVariant = Color(0xFF44474E),
+    outline = Color(0xFFE0E0E0)
+)
 @Composable
 fun NovaFilesTheme(
     themeMode: AppThemeMode = AppThemeMode.MATERIAL_YOU,
@@ -167,6 +207,9 @@ fun NovaFilesTheme(
             } else {
                 if (isDark) MaterialYouDarkScheme else MaterialYouLightScheme
             }
+        }
+        AppThemeMode.SAMSUNG_ONE_UI -> {
+            if (isDark) SamsungOneUIDarkScheme else SamsungOneUILightScheme
         }
         AppThemeMode.FROSTED_GLASS -> {
             if (isDark) FrostedGlassDarkScheme else FrostedGlassLightScheme
@@ -205,6 +248,11 @@ fun Modifier.glassBorder(
                 shape = shape
             )
         }
+        AppThemeMode.SAMSUNG_ONE_UI -> this.border(
+            width = 0.5.dp,
+            color = if (isDark) Color(0xFF333333) else Color(0xFFE5E7EB),
+            shape = shape
+        )
         AppThemeMode.MATERIAL_YOU -> this
     }
 }

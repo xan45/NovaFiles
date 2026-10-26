@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Opacity
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
@@ -112,6 +113,14 @@ fun SettingsScreen(
 
                 // Theme Mode Cards
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ThemeOptionCard(
+                        mode = AppThemeMode.SAMSUNG_ONE_UI,
+                        isSelected = currentThemeMode == AppThemeMode.SAMSUNG_ONE_UI,
+                        onSelect = { onThemeModeChange(AppThemeMode.SAMSUNG_ONE_UI) },
+                        badgeIcon = Icons.Default.PhoneAndroid,
+                        gradientColors = listOf(Color(0xFFFFB300), Color(0xFFE65100))
+                    )
+
                     ThemeOptionCard(
                         mode = AppThemeMode.MATERIAL_YOU,
                         isSelected = currentThemeMode == AppThemeMode.MATERIAL_YOU,

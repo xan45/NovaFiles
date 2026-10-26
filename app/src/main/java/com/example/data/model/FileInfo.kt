@@ -106,6 +106,7 @@ data class StorageVolumeInfo(
 ) {
     val usedBytes: Long get() = totalBytes - freeBytes
     val usedPercentage: Float get() = if (totalBytes > 0) (usedBytes.toFloat() / totalBytes.toFloat()) else 0f
+    val usedPercent: Float get() = usedPercentage
     val formattedTotal: String get() = FileInfo.formatFileSize(totalBytes)
     val formattedUsed: String get() = FileInfo.formatFileSize(usedBytes)
     val formattedFree: String get() = FileInfo.formatFileSize(freeBytes)
@@ -136,6 +137,7 @@ data class DuplicateGroup(
     val files: List<FileInfo>
 ) {
     val singleFileSize: Long get() = files.firstOrNull()?.size ?: 0L
+    val size: Long get() = singleFileSize
     val totalWastedBytes: Long get() = if (files.size > 1) singleFileSize * (files.size - 1) else 0L
     val formattedWasted: String get() = FileInfo.formatFileSize(totalWastedBytes)
 }
@@ -157,5 +159,10 @@ data class ArchiveEntryInfo(
     val isDirectory: Boolean,
     val compressedSize: Long,
     val uncompressedSize: Long,
-    val lastModified: Long
-)
+    val lastModified: Long = 0L,
+    val crc: Long = 0L
+) {
+    val size: Long get() = uncompressedSize
+    val formattedSize: String get() = FileInfo.formatFileSize(uncompressedSize)
+    val formattedCompressedSize: String get() = FileInfo.formatFileSize(compressedSize)
+}
