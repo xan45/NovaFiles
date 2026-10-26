@@ -16,19 +16,19 @@ android {
     applicationId = "com.aistudio.novafiles.kxmfle"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0.0-beta1"
+    versionCode = 2
+    versionName = "1.0.0-beta2"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
+      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/novafiles-release.jks"
       storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD")
+      storePassword = System.getenv("STORE_PASSWORD") ?: "novafiles123"
+      keyAlias = System.getenv("KEY_ALIAS") ?: "novafiles"
+      keyPassword = System.getenv("KEY_PASSWORD") ?: "novafiles123"
     }
     create("debugConfig") {
       storeFile = file("${rootDir}/debug.keystore")
