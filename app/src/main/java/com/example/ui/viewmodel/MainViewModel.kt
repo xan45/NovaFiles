@@ -55,6 +55,11 @@ import com.example.data.tools.FileShredder
 import com.example.data.tools.RenameItem
 import java.io.File
 import java.util.zip.ZipOutputStream
+import com.example.data.network.SmbClientManager
+import com.example.data.network.SmbFileItem
+import com.example.data.network.SmbShareConfig
+import com.example.data.root.RootEnvironmentStatus
+import com.example.data.root.RootStorageManager
 
 enum class AppScreen {
     HOME,
@@ -74,7 +79,8 @@ enum class AppScreen {
     FILE_COMPARE,
     FOLDER_SYNC,
     ACTIVITY_LOGS,
-    SMART_COLLECTION
+    SMART_COLLECTION,
+    ROOT_EXPLORER
 }
 
 enum class ActivePane { LEFT, RIGHT }
@@ -292,6 +298,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _cloudFolderId = MutableStateFlow<String?>(null)
     val cloudFolderId: StateFlow<String?> = _cloudFolderId.asStateFlow()
+
+    // SMB Client
+    private val smbManager = SmbClientManager()
+    private val _isSmbConnected = MutableStateFlow(false)
+    val isSmbConnected: StateFlow<Boolean> = _isSmbConnected.asStateFlow()
+
+    private val _smbFiles = MutableStateFlow<List<SmbFileItem>>(emptyList())
+    val smbFiles: StateFlow<List<SmbFileItem>> = _smbFiles.asStateFlow()
+
+    private val _currentSmbPath = MutableStateFlow("")
+    val currentSmbPath: StateFlow<String> = _currentSmbPath.asStateFlow()
+
+    private val _isSmbLoading = MutableStateFlow(false)
+    val isSmbLoading: StateFlow<Boolean> = _isSmbLoading.asStateFlow()
+
+    private val _smbActiveConfig = MutableStateFlow<SmbShareConfig?>(null)
+    val smbActiveConfig: StateFlow<SmbShareConfig?> = _smbActiveConfig.asStateFlow()
+
+    // Root / Shizuku
+    private val _rootEnvironmentStatus = MutableStateFlow(RootStorageManager.getEnvironmentStatus())
+    val rootEnvironmentStatus: StateFlow<RootEnvironmentStatus> = _rootEnvironmentStatus.asStateFlow()
+
+    private val _rootDirectoryFiles = MutableStateFlow<List<FileInfo>>(emptyList())
+    val rootDirectoryFiles: StateFlow<List<FileInfo>> = _rootDirectoryFiles.asStateFlow()
+
+    private val _currentRootPath = MutableStateFlow("/")
+    val currentRootPath: StateFlow<String> = _currentRootPath.asStateFlow()
+
+    private val _isRootLoading = MutableStateFlow(false)
+    val isRootLoading: StateFlow<Boolean> = _isRootLoading.asStateFlow()
 
     init {
         if (!prefs.getBoolean("onboarding_completed", false)) {
@@ -1370,6 +1406,93 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.activityLogDao.clearAllLogs()
             showSnackbar("Activity history cleared")
+        }
+    }
+
+    // ==========================================
+    // SMB Windows Share Client
+    // ==========================================
+    fun connectSmb(config: SmbShareConfig) {
+        viewModelScope.launch {
+            _isSmbLoading.value = true
+            val result = smbManager.connect(config)
+            result.onSuccess {
+                _isSmbConnected.value = true
+                _smbActiveConfig.value = config
+                _currentSmbPath.value = ""
+                loadSmbFiles("")
+                showSnackbar("Connected to  on ")
+            }.onFailure { err ->
+                _isSmbConnected.value = false
+                showSnackbar("SMB Connection failed: ")
+            }
+            _isSmbLoading.value = false
+        }
+    }
+
+    fun disconnectSmb() {
+        smbManager.disconnect()
+        _isSmbConnected.value = false
+        _smbFiles.value = emptyList()
+        _smbActiveConfig.value = null
+        _currentSmbPath.value = ""
+        showSnackbar("Disconnected from SMB share")
+    }
+
+    fun loadSmbFiles(path: String = "") {
+        viewModelScope.launch {
+            _isSmbLoading.value = true
+            _currentSmbPath.value = path
+            val result = smbManager.listFiles(path)
+            result.onSuccess {
+                _smbFiles.value = it
+            }.onFailure {
+                showSnackbar("Failed to list SMB files: ")
+            }
+            _isSmbLoading.value = false
+        }
+    }
+
+    fun downloadSmbFile(item: SmbFileItem) {
+        viewModelScope.launch {
+            val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val targetFile = File(downloadDir, item.name)
+            showSnackbar("Downloading ...")
+            val result = smbManager.downloadFile(item.path, targetFile)
+            result.onSuccess {
+                showSnackbar("Downloaded to ")
+                loadCurrentFiles()
+            }.onFailure {
+                showSnackbar("Download failed: ")
+            }
+        }
+    }
+
+    // ==========================================
+    // Root & Privileged Shell Explorer
+    // ==========================================
+    fun refreshRootStatus() {
+        _rootEnvironmentStatus.value = RootStorageManager.getEnvironmentStatus()
+    }
+
+    fun listRootDirectory(path: String = "/") {
+        viewModelScope.launch {
+            _isRootLoading.value = true
+            _currentRootPath.value = path
+            val list = RootStorageManager.listProtectedDirectory(path)
+            _rootDirectoryFiles.value = list
+            _isRootLoading.value = false
+        }
+    }
+
+    fun executeRootCommand(command: String, onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val result = RootStorageManager.executeElevatedCommand(command)
+            result.onSuccess {
+                onResult(it)
+            }.onFailure {
+                onResult("Error: ")
+            }
         }
     }
 

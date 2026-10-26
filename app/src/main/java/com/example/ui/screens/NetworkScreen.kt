@@ -23,10 +23,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Dns
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Lan
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
@@ -38,6 +42,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -62,9 +67,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.model.FileInfo
 import com.example.data.network.FtpServerConfig
 import com.example.data.network.FtpServerState
-import com.example.data.network.NetworkProtocol
+import com.example.data.network.SmbFileItem
+import com.example.data.network.SmbShareConfig
 import com.example.data.preferences.AppThemeMode
 import com.example.ui.theme.LocalAppThemeMode
 import com.example.ui.theme.PrimaryBlue
@@ -78,11 +85,29 @@ fun NetworkScreen(
     ftpConfig: FtpServerConfig,
     onToggleFtpServer: () -> Unit,
     onUpdateFtpConfig: (FtpServerConfig) -> Unit,
+    isSmbConnected: Boolean = false,
+    smbFiles: List<SmbFileItem> = emptyList(),
+    currentSmbPath: String = "",
+    isSmbLoading: Boolean = false,
+    smbActiveConfig: SmbShareConfig? = null,
+    onConnectSmb: (SmbShareConfig) -> Unit = {},
+    onDisconnectSmb: () -> Unit = {},
+    onLoadSmbFiles: (String) -> Unit = {},
+    onDownloadSmbFile: (SmbFileItem) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val themeMode = LocalAppThemeMode.current
     var showConfigModal by remember { mutableStateOf(false) }
+
+    // SMB Connection Form States
+    var smbHost by remember { mutableStateOf("") }
+    var smbPort by remember { mutableStateOf("445") }
+    var smbShare by remember { mutableStateOf("") }
+    var smbUsername by remember { mutableStateOf("") }
+    var smbPassword by remember { mutableStateOf("") }
+    var smbDomain by remember { mutableStateOf("") }
+    var showSmbConnectDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = modifier
@@ -98,13 +123,13 @@ fun NetworkScreen(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Transfer files over Wi-Fi, run local FTP server, or connect to remote storage",
+                text = "Transfer files over Wi-Fi via built-in FTP or connect to Windows SMBv2/v3 shares",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
-        // FTP Server Card
+        // Wi-Fi FTP Server Card
         item {
             ElevatedCard(
                 modifier = Modifier
@@ -354,72 +379,260 @@ fun NetworkScreen(
             }
         }
 
-        // Remote Network Clients (FTP / SFTP / WebDAV / SMB)
+        // SMBv2 / SMBv3 Windows Share Section
         item {
-            Text(
-                text = "Network File Shares",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Windows Share (SMBv2 / SMBv3)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                if (isSmbConnected) {
+                    FilledTonalButton(
+                        onClick = onDisconnectSmb,
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Disconnect")
+                    }
+                }
+            }
         }
 
-        items(NetworkProtocol.entries) { protocol ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .glassBorder(themeMode, shape = RoundedCornerShape(16.dp)),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
-            ) {
-                Row(
+        if (!isSmbConnected) {
+            // Connection Card
+            item {
+                ElevatedCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .glassBorder(themeMode, shape = RoundedCornerShape(20.dp)),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = when (protocol) {
-                                    NetworkProtocol.FTP -> Icons.Default.Dns
-                                    NetworkProtocol.SFTP -> Icons.Default.Lock
-                                    NetworkProtocol.WEBDAV -> Icons.Default.Lan
-                                    NetworkProtocol.SMB -> Icons.Default.Lan
-                                },
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(22.dp)
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(PrimaryBlue.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Lan, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(22.dp))
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Connect to Windows Share / NAS",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Access folders shared across your local Wi-Fi network",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        OutlinedTextField(
+                            value = smbHost,
+                            onValueChange = { smbHost = it },
+                            label = { Text("Server IP / Hostname (e.g. 192.168.1.100)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = smbShare,
+                                onValueChange = { smbShare = it },
+                                label = { Text("Share Name (e.g. Shared)") },
+                                singleLine = true,
+                                modifier = Modifier.weight(2f)
+                            )
+                            OutlinedTextField(
+                                value = smbPort,
+                                onValueChange = { smbPort = it },
+                                label = { Text("Port") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
                             )
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = protocol.displayName,
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = smbUsername,
+                                onValueChange = { smbUsername = it },
+                                label = { Text("Username (optional)") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
                             )
-                            Text(
-                                text = protocol.description,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            OutlinedTextField(
+                                value = smbPassword,
+                                onValueChange = { smbPassword = it },
+                                label = { Text("Password (optional)") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
                             )
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Button(
+                            onClick = {
+                                if (smbHost.isNotBlank() && smbShare.isNotBlank()) {
+                                    val port = smbPort.toIntOrNull() ?: 445
+                                    onConnectSmb(
+                                        SmbShareConfig(
+                                            host = smbHost.trim(),
+                                            port = port,
+                                            shareName = smbShare.trim(),
+                                            domain = smbDomain.trim(),
+                                            username = smbUsername.trim(),
+                                            password = smbPassword
+                                        )
+                                    )
+                                }
+                            },
+                            enabled = !isSmbLoading && smbHost.isNotBlank() && smbShare.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (isSmbLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Connecting...")
+                            } else {
+                                Icon(Icons.Default.Lan, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Connect to Share")
+                            }
                         }
                     }
-
-                    FilledTonalButton(
-                        onClick = { /* Connect */ },
-                        shape = RoundedCornerShape(10.dp)
+                }
+            }
+        } else {
+            // Connected Active Share Browser
+            item {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Connect")
+                        Column {
+                            Text(
+                                text = "Connected: ${smbActiveConfig?.shareName} on ${smbActiveConfig?.host}",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = if (currentSmbPath.isEmpty()) "Root Folder" else "\\$currentSmbPath",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+
+                        if (currentSmbPath.isNotEmpty()) {
+                            IconButton(onClick = {
+                                val parent = currentSmbPath.substringBeforeLast("\\", "")
+                                onLoadSmbFiles(parent)
+                            }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Parent Directory")
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (isSmbLoading) {
+                item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+            } else if (smbFiles.isEmpty()) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                    ) {
+                        Text(
+                            text = "No files found in this share directory.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+            } else {
+                items(smbFiles) { item ->
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable {
+                                if (item.isDirectory) {
+                                    onLoadSmbFiles(item.path)
+                                } else {
+                                    onDownloadSmbFile(item)
+                                }
+                            },
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (item.isDirectory) Icons.Default.Folder else Icons.Default.InsertDriveFile,
+                                contentDescription = null,
+                                tint = if (item.isDirectory) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = item.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = if (item.isDirectory) "Folder" else FileInfo.formatFileSize(item.size),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            if (!item.isDirectory) {
+                                IconButton(onClick = { onDownloadSmbFile(item) }) {
+                                    Icon(Icons.Default.Download, contentDescription = "Download File", tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
                     }
                 }
             }

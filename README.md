@@ -7,7 +7,7 @@
 [![Release](https://img.shields.io/badge/Release-v1.0.0--beta1-FF6F00?style=for-the-badge&logo=github)](releases/NovaFiles-v1.0.0-beta1.apk)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge)](LICENSE)
 
-**NovaFiles** is an advanced, ultra-responsive next-generation Android file manager built with **Jetpack Compose**, **Material Design 3**, and dedicated **Samsung One UI** design system elements. Powered by reactive Kotlin coroutines, modern storage engines, and enterprise-grade networking, NovaFiles delivers a desktop-class file management experience directly on Android.
+**NovaFiles** is an advanced, ultra-responsive next-generation Android file manager designed and developed by **Abhinav Kishore (XanDron45)**, ultra-responsive next-generation Android file manager built with **Jetpack Compose**, **Material Design 3**, and dedicated **Samsung One UI** design system elements. Powered by reactive Kotlin coroutines, modern storage engines, and enterprise-grade networking, NovaFiles delivers a desktop-class file management experience directly on Android.
 
 ---
 
@@ -89,10 +89,10 @@ The first compiled beta APK release is available in this repository:
 - **File**: [`releases/NovaFiles-v1.0.0-beta1.apk`](releases/NovaFiles-v1.0.0-beta1.apk)
 - **Version**: `1.0.0-beta1` (versionCode `1`)
 - **Package ID**: `com.aistudio.novafiles.kxmfle`
-- **File Size**: `30,834,567 bytes (~29.4 MB)`
+- **File Size**: `31,311,854 bytes (~29.8 MB)`
 - **SHA-256 Checksum**:
   ```text
-  592ED07B873B7EC0B2FAA6F340FF069B9FE4104EB2CD00301E069B49B8F5CCD9
+  EB235C0F897632F80567795F1878A32781963EF01540D59033FB97BD15A7050B
   ```
 
 ### Verification

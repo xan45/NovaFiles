@@ -188,6 +188,19 @@ fun MainAppScreen(
     val sha1Hash by viewModel.sha1Hash.collectAsState()
     val md5Hash by viewModel.md5Hash.collectAsState()
 
+    // SMB states
+    val isSmbConnected by viewModel.isSmbConnected.collectAsState()
+    val smbFiles by viewModel.smbFiles.collectAsState()
+    val currentSmbPath by viewModel.currentSmbPath.collectAsState()
+    val isSmbLoading by viewModel.isSmbLoading.collectAsState()
+    val smbActiveConfig by viewModel.smbActiveConfig.collectAsState()
+
+    // Root states
+    val rootStatus by viewModel.rootEnvironmentStatus.collectAsState()
+    val rootFiles by viewModel.rootDirectoryFiles.collectAsState()
+    val currentRootPath by viewModel.currentRootPath.collectAsState()
+    val isRootLoading by viewModel.isRootLoading.collectAsState()
+
     // Storage Permission handling
     var hasStoragePermission by remember {
         mutableStateOf(
@@ -283,7 +296,10 @@ fun MainAppScreen(
                                 AppScreen.FAVORITES -> "Favorites"
                                 AppScreen.VAULT -> "Secure Vault"
                                 AppScreen.CLOUD_STORAGE -> "Cloud Storage"
-                                AppScreen.SETTINGS -> "Settings"
+                                AppScreen.SETTINGS -> "Settings & Preferences"
+                                AppScreen.NETWORK -> "Network & Remote Access"
+                                AppScreen.ROOT_EXPLORER -> "Root & Shizuku Explorer"
+                                AppScreen.TOOLS -> "Power Tools & Utilities"
                                 else -> "NovaFiles"
                             },
                             fontWeight = FontWeight.Bold
@@ -501,11 +517,10 @@ fun MainAppScreen(
                             showHidden = showHidden,
                             onToggleShowHidden = { viewModel.toggleShowHidden() },
                             onChangePin = { viewModel.showDialog(DialogType.SetPin(isChange = true)) },
-                            onClearRecents = {
-                                viewModel.showSnackbar("Recent history cleared")
-                            },
+                            onClearRecents = { viewModel.showSnackbar("Recent history cleared") },
                             onRevisitOnboarding = { viewModel.navigateTo(AppScreen.ONBOARDING) },
-                            onOpenCloudStorage = { viewModel.navigateTo(AppScreen.CLOUD_STORAGE) }
+                            onNavigateToScreen = { viewModel.navigateTo(it) },
+                            rootStatus = rootStatus
                         )
                         AppScreen.ONBOARDING -> OnboardingScreen(
                             onFinish = { viewModel.completeOnboarding() }
@@ -514,7 +529,25 @@ fun MainAppScreen(
                             ftpState = ftpState,
                             ftpConfig = ftpConfig,
                             onToggleFtpServer = { viewModel.toggleFtpServer() },
-                            onUpdateFtpConfig = { viewModel.updateFtpConfig(it) }
+                            onUpdateFtpConfig = { viewModel.updateFtpConfig(it) },
+                            isSmbConnected = isSmbConnected,
+                            smbFiles = smbFiles,
+                            currentSmbPath = currentSmbPath,
+                            isSmbLoading = isSmbLoading,
+                            smbActiveConfig = smbActiveConfig,
+                            onConnectSmb = { viewModel.connectSmb(it) },
+                            onDisconnectSmb = { viewModel.disconnectSmb() },
+                            onLoadSmbFiles = { viewModel.loadSmbFiles(it) },
+                            onDownloadSmbFile = { viewModel.downloadSmbFile(it) }
+                        )
+                        AppScreen.ROOT_EXPLORER -> RootExplorerScreen(
+                            status = rootStatus,
+                            currentPath = currentRootPath,
+                            files = rootFiles,
+                            isLoading = isRootLoading,
+                            onRefreshStatus = { viewModel.refreshRootStatus() },
+                            onNavigatePath = { viewModel.listRootDirectory(it) },
+                            onExecuteCommand = { cmd, onRes -> viewModel.executeRootCommand(cmd, onRes) }
                         )
                         AppScreen.TOOLS -> ToolsScreen(
                             onNavigateToScreen = { viewModel.navigateTo(it) }

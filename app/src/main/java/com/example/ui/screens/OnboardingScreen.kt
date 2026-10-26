@@ -2,15 +2,12 @@ package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,13 +20,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.CompareArrows
-import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FolderZip
+import androidx.compose.material.icons.filled.Lan
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PieChart
-import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -39,26 +36,22 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.R
 import com.example.ui.theme.PrimaryBlue
 import com.example.ui.theme.SecondaryTeal
 import com.example.ui.theme.TertiaryAmber
 import kotlinx.coroutines.launch
 
-data class OnboardingPageData(
+data class AuthenticOnboardingPage(
     val title: String,
     val subtitle: String,
     val description: String,
@@ -67,74 +60,99 @@ data class OnboardingPageData(
     val highlights: List<String>
 )
 
-val onboardingPages = listOf(
-    OnboardingPageData(
-        title = "Intelligent File Explorer",
-        subtitle = "FAST & RESPONSIVE",
-        description = "Effortlessly manage your files with grid or list views, instant global search, category shortcuts, and batch operations.",
-        icon = Icons.Rounded.Folder,
-        iconColor = PrimaryBlue,
-        highlights = listOf(
-            "Category shortcuts (Photos, Audio, Videos, APKs)",
-            "Batch copy, move, duplicate, and share",
-            "Full ZIP archive reader and compressor"
-        )
-    ),
-    OnboardingPageData(
+val authenticOnboardingPages = listOf(
+    AuthenticOnboardingPage(
         title = "Dual-Pane Power Browser",
-        subtitle = "TOTAL COMMANDER STYLE",
-        description = "Browse two separate folders at once. Seamlessly move or copy files across panels without losing your spot.",
-        icon = Icons.Default.CompareArrows,
+        subtitle = "TOTAL COMMANDER WORKFLOW",
+        description = "Browse two folders simultaneously on phones and tablets. Effortlessly move or copy files across independent panels with a single tap.",
+        icon = Icons.AutoMirrored.Filled.CompareArrows,
         iconColor = SecondaryTeal,
         highlights = listOf(
             "Side-by-side management on phones & tablets",
-            "1-tap fast copy & move transfers",
-            "Independent sorting & path breadcrumbs"
+            "1-tap fast copy & move transfers between panels",
+            "Independent sorting, view modes, and breadcrumbs"
         )
     ),
-    OnboardingPageData(
-        title = "Deep Storage Analyzer",
-        subtitle = "AI INSIGHTS & CLEANER",
-        description = "Identify space hogs, remove exact duplicate files using SHA-256 checksums, and purge leftover app cache with one tap.",
+    AuthenticOnboardingPage(
+        title = "Safe Storage Analyzer",
+        subtitle = "3-POINT SHA-256 CLEANER",
+        description = "Deeply analyze disk usage by category. Eliminate duplicates safely with multi-point cryptographic hashing that guarantees zero false positives.",
         icon = Icons.Default.PieChart,
         iconColor = TertiaryAmber,
         highlights = listOf(
-            "Interactive Donut and Treemap visualizations",
-            "Duplicate file finder with preview before delete",
-            "Large files detector (>100MB, >500MB, >1GB)"
+            "3-Point sampling (64KB Head + Mid + Tail) with SHA-256",
+            "Visual Donut and Bar category storage breakdowns",
+            "Junk cache and empty folder 1-tap cleaner"
         )
     ),
-    OnboardingPageData(
-        title = "Cloud & Secure Vault",
-        subtitle = "MULTI-CLOUD & PRIVACY",
-        description = "Connect Google Drive, Dropbox, and OneDrive. Protect private documents and photos inside the PIN-locked Secure Vault.",
-        icon = Icons.Default.Cloud,
+    AuthenticOnboardingPage(
+        title = "Universal Archive Suite",
+        subtitle = "7Z, RAR, TAR & ZIP SUPPORT",
+        description = "Comprehensive compressed file support. Inspect contents, verify CRC checksums, and extract 7-Zip, WinRAR, UNIX TAR/GZ, and ZIP archives directly.",
+        icon = Icons.Default.FolderZip,
+        iconColor = Color(0xFF8B5CF6),
+        highlights = listOf(
+            "7-Zip (.7z) decompressed with Apache Commons Compress",
+            "WinRAR (.rar) extraction powered by Junrar",
+            "In-archive browsing without full extraction"
+        )
+    ),
+    AuthenticOnboardingPage(
+        title = "AES-256 Encrypted Vault",
+        subtitle = "ZERO-KNOWLEDGE PRIVACY",
+        description = "Hardware-grade private storage. Encrypt sensitive documents, images, and videos with AES/CBC/PKCS5Padding protected by a salted PIN passcode.",
+        icon = Icons.Default.Lock,
+        iconColor = Color(0xFFEF4444),
+        highlights = listOf(
+            "Unique per-file Initialization Vectors (IVs)",
+            "Salted SHA-256 PIN key derivation",
+            "Stealth storage hidden from media indexers"
+        )
+    ),
+    AuthenticOnboardingPage(
+        title = "Windows Share & Wi-Fi FTP",
+        subtitle = "SMBv2/v3 & CABLE-FREE TRANSFER",
+        description = "Connect directly to Windows 10/11 network shares and NAS devices via SMBv2/SMBv3, or run a high-speed Wi-Fi FTP server on your phone.",
+        icon = Icons.Default.Lan,
         iconColor = PrimaryBlue,
         highlights = listOf(
-            "Google Drive, Dropbox, and OneDrive integration",
-            "Encrypted Private Vault with PIN passcode",
-            "Recycle Bin with 30-day restore protection"
+            "Native SMBv2 & SMBv3 client powered by smbj",
+            "Built-in multi-threaded Wi-Fi FTP server on port 2121",
+            "Browse remote shares and download directly to phone"
+        )
+    ),
+    AuthenticOnboardingPage(
+        title = "Root & Shizuku Explorer",
+        subtitle = "PRIVILEGED SYSTEM ACCESS",
+        description = "Inspect restricted partitions (/data, /system, /vendor) with elevated superuser shell execution ('su') and Shizuku binder authorization.",
+        icon = Icons.Default.Security,
+        iconColor = Color(0xFF10B981),
+        highlights = listOf(
+            "Root superuser shell runner with live terminal console",
+            "Shizuku service status and permission verification",
+            "UNIX permissions, file modes, and partition inspection"
         )
     )
 )
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun OnboardingScreen(
     onFinish: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val pagerState = rememberPagerState(pageCount = { onboardingPages.size })
-    val scope = rememberCoroutineScope()
+    val pagerState = rememberPagerState(pageCount = { authenticOnboardingPages.size })
+    val coroutineScope = rememberCoroutineScope()
 
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Top Bar with Skip Button
             Row(
@@ -144,158 +162,140 @@ fun OnboardingScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Folder,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "NovaFiles",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                Text(
+                    text = "NovaFiles Tour",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
 
-                if (pagerState.currentPage < onboardingPages.size - 1) {
-                    TextButton(onClick = onFinish) {
-                        Text("Skip", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                } else {
-                    Spacer(modifier = Modifier.width(48.dp))
+                TextButton(onClick = onFinish) {
+                    Text(
+                        text = "Skip",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Hero Illustration Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(24.dp)),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_onboarding_hero),
-                    contentDescription = "NovaFiles Hero Banner",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-
-            // Pager Content
+            // Horizontal Pager
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-            ) { pageIndex ->
-                val page = onboardingPages[pageIndex]
-
+            ) { page ->
+                val pageData = authenticOnboardingPages[page]
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(top = 20.dp),
-                    horizontalAlignment = Alignment.Start
+                        .padding(horizontal = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    // Category subtitle pill
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = page.iconColor.copy(alpha = 0.15f)
+                    // Feature Icon Box
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(RoundedCornerShape(28.dp))
+                            .background(pageData.iconColor.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = page.subtitle,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = page.iconColor,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        Icon(
+                            imageVector = pageData.icon,
+                            contentDescription = null,
+                            tint = pageData.iconColor,
+                            modifier = Modifier.size(52.dp)
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
                     Text(
-                        text = page.title,
+                        text = pageData.subtitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = pageData.iconColor,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.5.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = pageData.title,
                         style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Black
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        text = page.description,
+                        text = pageData.description,
                         style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 20.sp
+                        lineHeight = 22.sp
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                    // Feature highlights list
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        page.highlights.forEach { highlight ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(20.dp)
-                                        .clip(CircleShape)
-                                        .background(page.iconColor.copy(alpha = 0.15f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
+                    // Highlights Card
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            pageData.highlights.forEach { highlight ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
                                         imageVector = Icons.Default.Check,
                                         contentDescription = null,
-                                        tint = page.iconColor,
-                                        modifier = Modifier.size(12.dp)
+                                        tint = pageData.iconColor,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = highlight,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(
-                                    text = highlight,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.Medium
-                                )
                             }
                         }
                     }
                 }
             }
 
-            // Bottom Navigation & Indicators
+            // Bottom Navigation Row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp),
+                    .padding(vertical = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Dot indicators
+                // Page Indicator Dots
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    repeat(onboardingPages.size) { index ->
+                    repeat(authenticOnboardingPages.size) { index ->
                         val isSelected = pagerState.currentPage == index
-                        val width by animateDpAsState(
+                        val width = animateDpAsState(
                             targetValue = if (isSelected) 24.dp else 8.dp,
-                            label = "indicatorWidth"
+                            label = "indicator"
                         )
                         Box(
                             modifier = Modifier
                                 .height(8.dp)
-                                .width(width)
+                                .width(width.value)
                                 .clip(CircleShape)
                                 .background(
                                     if (isSelected) MaterialTheme.colorScheme.primary
@@ -306,14 +306,14 @@ fun OnboardingScreen(
                 }
 
                 // Next or Get Started Button
-                val isLastPage = pagerState.currentPage == onboardingPages.size - 1
+                val isLastPage = pagerState.currentPage == authenticOnboardingPages.size - 1
 
                 Button(
                     onClick = {
                         if (isLastPage) {
                             onFinish()
                         } else {
-                            scope.launch {
+                            coroutineScope.launch {
                                 pagerState.animateScrollToPage(pagerState.currentPage + 1)
                             }
                         }
@@ -323,7 +323,7 @@ fun OnboardingScreen(
                     Text(if (isLastPage) "Get Started" else "Next")
                     Spacer(modifier = Modifier.width(6.dp))
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        imageVector = if (isLastPage) Icons.Default.Check else Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )

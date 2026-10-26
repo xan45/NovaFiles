@@ -20,31 +20,33 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.CompareArrows
+import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CleaningServices
-import androidx.compose.material.icons.filled.CompareArrows
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.FolderZip
+import androidx.compose.material.icons.filled.Lan
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -54,11 +56,14 @@ import com.example.data.model.FileCategory
 import com.example.data.model.FileInfo
 import com.example.data.model.StorageAnalysisResult
 import com.example.data.model.StorageVolumeInfo
+import com.example.data.preferences.AppThemeMode
 import com.example.ui.components.QuickShortcutsGrid
 import com.example.ui.components.StorageOverviewCard
+import com.example.ui.theme.LocalAppThemeMode
 import com.example.ui.theme.PrimaryBlue
 import com.example.ui.theme.SecondaryTeal
 import com.example.ui.theme.TertiaryAmber
+import com.example.ui.theme.glassBorder
 import com.example.ui.viewmodel.AppScreen
 import java.io.File
 
@@ -72,13 +77,14 @@ fun HomeScreen(
     onOpenFile: (File) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
+    val themeMode = LocalAppThemeMode.current
+    val cardCorner = if (themeMode == AppThemeMode.SAMSUNG_ONE_UI) 26.dp else 20.dp
 
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp),
+        contentPadding = PaddingValues(top = 16.dp, bottom = 95.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Storage Overview Card
@@ -96,56 +102,138 @@ fun HomeScreen(
             )
         }
 
-        // Quick Tools Row
+        // Primary Feature Hub: Core Power Modules
         item {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "Pro Tools",
+                    text = "Core Power Engines",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 10.dp)
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    ToolShortcutCard(
-                        title = "Cloud Storage",
-                        subtitle = "Drive & Cloud",
-                        icon = Icons.Default.Cloud,
-                        color = PrimaryBlue,
-                        onClick = { onNavigateToScreen(AppScreen.CLOUD_STORAGE) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ToolShortcutCard(
-                        title = "Dual Pane",
-                        subtitle = "Two Folders",
-                        icon = Icons.Default.CompareArrows,
-                        color = SecondaryTeal,
-                        onClick = { onNavigateToScreen(AppScreen.DUAL_PANE) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ToolShortcutCard(
-                        title = "Analyzer",
-                        subtitle = "Charts & Dups",
-                        icon = Icons.Default.PieChart,
-                        color = TertiaryAmber,
-                        onClick = { onNavigateToScreen(AppScreen.STORAGE_ANALYZER) },
-                        modifier = Modifier.weight(1f)
-                    )
+                // 2x3 Grid of core power modules
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        PowerModuleCard(
+                            title = "Dual Pane",
+                            subtitle = "Side-by-side browsing",
+                            icon = Icons.AutoMirrored.Filled.CompareArrows,
+                            color = SecondaryTeal,
+                            onClick = { onNavigateToScreen(AppScreen.DUAL_PANE) },
+                            modifier = Modifier.weight(1f),
+                            corner = cardCorner
+                        )
+                        PowerModuleCard(
+                            title = "Storage Analyzer",
+                            subtitle = "3-Point SHA-256 cleaner",
+                            icon = Icons.Default.PieChart,
+                            color = TertiaryAmber,
+                            onClick = { onNavigateToScreen(AppScreen.STORAGE_ANALYZER) },
+                            modifier = Modifier.weight(1f),
+                            corner = cardCorner
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        PowerModuleCard(
+                            title = "Secure Vault",
+                            subtitle = "Hardware/PIN AES-256",
+                            icon = Icons.Default.Lock,
+                            color = Color(0xFFEF4444),
+                            onClick = { onNavigateToScreen(AppScreen.VAULT) },
+                            modifier = Modifier.weight(1f),
+                            corner = cardCorner
+                        )
+                        PowerModuleCard(
+                            title = "Network & SMB",
+                            subtitle = "Wi-Fi FTP & SMBv2/v3",
+                            icon = Icons.Default.Lan,
+                            color = PrimaryBlue,
+                            onClick = { onNavigateToScreen(AppScreen.NETWORK) },
+                            modifier = Modifier.weight(1f),
+                            corner = cardCorner
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        PowerModuleCard(
+                            title = "Root & Shizuku",
+                            subtitle = "Privileged system shell",
+                            icon = Icons.Default.Security,
+                            color = Color(0xFF8B5CF6),
+                            onClick = { onNavigateToScreen(AppScreen.ROOT_EXPLORER) },
+                            modifier = Modifier.weight(1f),
+                            corner = cardCorner
+                        )
+                        PowerModuleCard(
+                            title = "Power Tools",
+                            subtitle = "Batch rename, sync & shred",
+                            icon = Icons.Default.Build,
+                            color = Color(0xFF10B981),
+                            onClick = { onNavigateToScreen(AppScreen.TOOLS) },
+                            modifier = Modifier.weight(1f),
+                            corner = cardCorner
+                        )
+                    }
                 }
             }
         }
 
-        // AI Storage Insights Card
+        // Quick Utilities Strip: APKs, Favorites, Bin, Sync
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                QuickUtilityChip(
+                    title = "APKs",
+                    icon = Icons.Default.Android,
+                    color = Color(0xFF10B981),
+                    onClick = { onNavigateToScreen(AppScreen.APK_MANAGER) },
+                    modifier = Modifier.weight(1f)
+                )
+                QuickUtilityChip(
+                    title = "Favorites",
+                    icon = Icons.Default.Star,
+                    color = TertiaryAmber,
+                    onClick = { onNavigateToScreen(AppScreen.FAVORITES) },
+                    modifier = Modifier.weight(1f)
+                )
+                QuickUtilityChip(
+                    title = "Recycle Bin",
+                    icon = Icons.Default.DeleteSweep,
+                    color = Color(0xFFF43F5E),
+                    onClick = { onNavigateToScreen(AppScreen.RECYCLE_BIN) },
+                    modifier = Modifier.weight(1f)
+                )
+                QuickUtilityChip(
+                    title = "Folder Sync",
+                    icon = Icons.Default.Sync,
+                    color = SecondaryTeal,
+                    onClick = { onNavigateToScreen(AppScreen.FOLDER_SYNC) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        // Real Storage Insights (when available from analysis)
         if (analysisResult?.insights?.isNotEmpty() == true) {
             item {
                 ElevatedCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onNavigateToScreen(AppScreen.STORAGE_ANALYZER) },
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(cardCorner),
                     colors = CardDefaults.elevatedCardColors(
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
                     )
@@ -163,7 +251,7 @@ fun HomeScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Storage Insights",
+                                text = "Intelligent Storage Insights",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onTertiaryContainer
@@ -199,15 +287,15 @@ fun HomeScreen(
                 }
             }
 
-            items(recentFiles.take(8)) { recent ->
+            items(recentFiles.take(6)) { recent ->
                 val file = File(recent.path)
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(14.dp))
                         .clickable { if (file.exists()) onOpenFile(file) },
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(14.dp)
                 ) {
                     Row(
                         modifier = Modifier
@@ -217,8 +305,8 @@ fun HomeScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(10.dp))
                                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center
                         ) {
@@ -248,96 +336,63 @@ fun HomeScreen(
                 }
             }
         }
-
-        // Secondary Shortcuts: Favorites, Vault, Recycle Bin
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                SecondaryToolCard(
-                    title = "APKs",
-                    icon = Icons.Default.Widgets,
-                    color = SecondaryTeal,
-                    onClick = { onNavigateToScreen(AppScreen.APK_MANAGER) },
-                    modifier = Modifier.weight(1f)
-                )
-                SecondaryToolCard(
-                    title = "Favorites",
-                    icon = Icons.Default.Star,
-                    color = TertiaryAmber,
-                    onClick = { onNavigateToScreen(AppScreen.FAVORITES) },
-                    modifier = Modifier.weight(1f)
-                )
-                SecondaryToolCard(
-                    title = "Vault",
-                    icon = Icons.Default.Lock,
-                    color = PrimaryBlue,
-                    onClick = { onNavigateToScreen(AppScreen.VAULT) },
-                    modifier = Modifier.weight(1f)
-                )
-                SecondaryToolCard(
-                    title = "Bin",
-                    icon = Icons.Default.DeleteSweep,
-                    color = Color(0xFFEF4444),
-                    onClick = { onNavigateToScreen(AppScreen.RECYCLE_BIN) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
     }
 }
 
 @Composable
-fun ToolShortcutCard(
+fun PowerModuleCard(
     title: String,
     subtitle: String,
     icon: ImageVector,
     color: Color,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    corner: androidx.compose.ui.unit.Dp = 20.dp
 ) {
+    val themeMode = LocalAppThemeMode.current
     Card(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            .clip(RoundedCornerShape(corner))
+            .clickable { onClick() }
+            .glassBorder(themeMode, shape = RoundedCornerShape(corner)),
+        shape = RoundedCornerShape(corner),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(14.dp)
         ) {
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(12.dp))
                     .background(color.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
+                maxLines = 1,
+                fontSize = 11.sp
             )
         }
     }
 }
 
 @Composable
-fun SecondaryToolCard(
+fun QuickUtilityChip(
     title: String,
     icon: ImageVector,
     color: Color,
@@ -349,21 +404,22 @@ fun SecondaryToolCard(
             .clip(RoundedCornerShape(14.dp))
             .clickable { onClick() },
         shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp, horizontal = 8.dp),
+                .padding(vertical = 10.dp, horizontal = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(6.dp))
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 11.sp
             )
         }
     }

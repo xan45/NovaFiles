@@ -109,6 +109,13 @@ fun ToolsScreen(
             targetScreen = AppScreen.APK_MANAGER
         ),
         ToolItem(
+            title = "Root & Shizuku Explorer",
+            description = "Privileged shell terminal and protected partition browser",
+            icon = Icons.Default.Security,
+            iconColor = Color(0xFF8B5CF6),
+            targetScreen = AppScreen.ROOT_EXPLORER
+        ),
+        ToolItem(
             title = "Secure Vault",
             description = "Encrypted storage locked with PIN or biometric fingerprint",
             icon = Icons.Default.Lock,
